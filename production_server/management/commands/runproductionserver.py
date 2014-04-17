@@ -98,18 +98,14 @@ class Command(BaseCommand):
                     dest='auto_reload',
                     default=False,
                     help="Automatically reload the server upon code changes"),
-        make_option('--collectstatic',
-                    action='store_true',
-                    dest='collectstatic',
-                    default=False,
-                    help="Collect all the installed apps static files and serve from the STATIC_ROOT. "
-                         "Good for production"),
         make_option('--serve_static',
                     action='store_true',
                     dest='serve_static',
-                    default=False,
-                    help="Serve static files directly from each app's static file folders. "
-                         "Good for development. This is the Default"),
+                    default='app',
+                    help="--server_static=app|collect|none\n "
+                         "Serve static files directly from each app's static file folders (good for development [default]),\n"
+                         "from the collected static directory at STATIC_ROOT (good for production),\n"
+                         "or don't serve static files at all (not good)"),
         make_option('--stop',
                     action='store_true',
                     dest='stop',
@@ -128,10 +124,6 @@ class Command(BaseCommand):
                 print e
                 return False
         else:
-            if self.options['collectstatic'] and self.options['serve_static']:
-                raise AttributeError("You cannot serve individual app static files and collect static files at the same time! Choose one or the other.")
-            elif not self.options['stop'] and not self.options['collectstatic'] and not self.options['serve_static']:
-                raise AttributeError("You should select a style of static serving!")
             self.logger = logging.getLogger(self.options['server_name'])
             self.logger.setLevel(logging.WARNING)
             self.logger.addHandler(logging.StreamHandler())
@@ -247,49 +239,53 @@ class Command(BaseCommand):
         #       This is what the normal 'manage.py runserver' does, and why you don't need to collectstatic while testing
         # 2. In production, you collect all the installed apps static files into one location (single folder, or CDN)
         #       using 'manage.py collectstatic'. You run this every time you change any app's static files and deploy.
-        try:
-            if not settings.STATIC_URL:
-                # could use misconfigured exception (what is this in django?) instead of AttributeError
-                raise AttributeError("settings.STATIC_URL = %s" % repr(settings.STATIC_URL))
-        except AttributeError as e:
-            self.logger.error(e)
-            self.logger.error("****")
-            self.logger.error("STATIC_URL must be set in settings file when using static files!")
-            self.logger.error("****")
-            raise
-
-        # Used to route static file requests through the WSGI Server.
         path = {'/': app}
-        if self.options['serve_static']:
-            # find all install apps static files and add them to the path
-            if settings.STATICFILES_FINDERS:
-                self.logger.debug("Settings.STATICFILES_FINDERS:\n%s" % settings.STATICFILES_FINDERS)
+        static_type = self.options['serve_static'].lower()
+        if static_type != "none":
+            if static_type != "app" and static_type != "collect":
+                raise ValueError("Type of static serving must be app|collect|none!")
+            try:
+                if not settings.STATIC_URL:
+                    # could use misconfigured exception (what is this in django?) instead of AttributeError
+                    raise AttributeError("settings.STATIC_URL = %s" % repr(settings.STATIC_URL))
+            except AttributeError as e:
+                self.logger.error(e)
+                self.logger.error("****")
+                self.logger.error("STATIC_URL must be set in settings file when using static files!")
+                self.logger.error("****")
+                raise
 
-                from django.contrib.staticfiles.finders import AppDirectoriesFinder
+            # Used to route static file requests through the WSGI Server.
+            if static_type == 'app':
+                # find all install apps static files and add them to the path
+                if settings.STATICFILES_FINDERS:
+                    self.logger.debug("Settings.STATICFILES_FINDERS:\n%s" % settings.STATICFILES_FINDERS)
 
-                app_static_finder = AppDirectoriesFinder(settings.INSTALLED_APPS)
-                self.logger.debug("app_static_finder.storages:\n%s" % app_static_finder.storages)
-                for key, val in app_static_finder.storages.items():
-                    self.logger.debug(key, " static location:", val.location)
-                    app_url = key.split('.')[-1] + r'/'
-                    full_static_url = os.path.join(settings.STATIC_URL, app_url)
-                    full_dir_location = os.path.join(val.location, app_url)
-                    self.logger.debug(full_static_url, full_dir_location)
-                    path[full_static_url] = StaticFileWSGIApplication(full_dir_location, self.logger)
+                    from django.contrib.staticfiles.finders import AppDirectoriesFinder
 
-            # Don't forget to also log other user defined static file locations
-            if hasattr(settings, 'STATICFILES_DIRS'):
-                staticlocations = self.process_staticfiles_dirs(settings.STATICFILES_DIRS)
-                self.logger.debug("staticlocations:\n%s" % staticlocations)
-                for urlprefix, root in staticlocations:
-                    path[os.path.join(settings.STATIC_URL, urlprefix)] = StaticFileWSGIApplication(root, self.logger)
+                    app_static_finder = AppDirectoriesFinder(settings.INSTALLED_APPS)
+                    self.logger.debug("app_static_finder.storages:\n%s" % app_static_finder.storages)
+                    for key, val in app_static_finder.storages.items():
+                        self.logger.debug(key, " static location:", val.location)
+                        app_url = key.split('.')[-1] + r'/'
+                        full_static_url = os.path.join(settings.STATIC_URL, app_url)
+                        full_dir_location = os.path.join(val.location, app_url)
+                        self.logger.debug(full_static_url, full_dir_location)
+                        path[full_static_url] = StaticFileWSGIApplication(full_dir_location, self.logger)
 
-        if self.options['collectstatic']:
-            # only serve the top level static root folder
-            path[settings.STATIC_URL] = StaticFileWSGIApplication(settings.STATIC_ROOT, self.logger)
-            self.logger.warning("Serving all static files from %s.\n"
-                                "*** Make sure you have done a fresh 'manage.py collectstatic' operation! ***"
-                                % settings.STATIC_ROOT)
+                # Don't forget to also log other user defined static file locations
+                if hasattr(settings, 'STATICFILES_DIRS'):
+                    staticlocations = self.process_staticfiles_dirs(settings.STATICFILES_DIRS)
+                    self.logger.debug("staticlocations:\n%s" % staticlocations)
+                    for urlprefix, root in staticlocations:
+                        path[os.path.join(settings.STATIC_URL, urlprefix)] = StaticFileWSGIApplication(root, self.logger)
+
+            if static_type == 'collect':
+                # only serve the top level static root folder
+                path[settings.STATIC_URL] = StaticFileWSGIApplication(settings.STATIC_ROOT, self.logger)
+                self.logger.warning("Serving all static files from %s.\n"
+                                    "*** Make sure you have done a fresh 'manage.py collectstatic' operation! ***"
+                                    % settings.STATIC_ROOT)
 
         # Setup router to intercept URLs and send to correct StaticFileWSGIApplication
         self.logger.debug("path: %s" % path)
