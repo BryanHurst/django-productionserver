@@ -17,6 +17,7 @@ from django.core.management.base import BaseCommand
 from optparse import make_option
 
 from cherrypy.wsgiserver import CherryPyWSGIServer, WSGIPathInfoDispatcher
+from utils.WSGIUtils import StaticFileWSGIApplication
 
 
 class Command(BaseCommand):
@@ -268,34 +269,34 @@ class Command(BaseCommand):
                 self.logger.debug("app_static_finder.storages:\n%s" % app_static_finder.storages)
                 for key, val in app_static_finder.storages.items():
                     self.logger.debug(key, " static location:", val.location)
-                    # need to decide what to do with this in terms of the fusion of the app static directories
                     app_url = key.split('.')[-1] + r'/'
                     full_static_url = os.path.join(settings.STATIC_URL, app_url)
                     full_dir_location = os.path.join(val.location, app_url)
                     self.logger.debug(full_static_url, full_dir_location)
-                    path[full_static_url] = Server.wsgiutil.StaticFileWSGIApplication(full_dir_location)
+                    path[full_static_url] = StaticFileWSGIApplication(full_dir_location, self.logger)
 
+            # Don't forget to also log other user defined static file locations
             if hasattr(settings, 'STATICFILES_DIRS'):
                 staticlocations = self.process_staticfiles_dirs(settings.STATICFILES_DIRS)
                 self.logger.debug("staticlocations:\n%s" % staticlocations)
                 for urlprefix, root in staticlocations:
-                    path[os.path.join(settings.STATIC_URL, urlprefix)] = TODO.wsgiutil.StaticFileWSGIApplication(root)
+                    path[os.path.join(settings.STATIC_URL, urlprefix)] = StaticFileWSGIApplication(root, self.logger)
 
         if self.options['collectstatic']:
             # only serve the top level static root folder
-            path[settings.STATIC_URL] = TODO.wsgiutil.StaticFileWSGIApplication(settings.STATIC_ROOT)
+            path[settings.STATIC_URL] = StaticFileWSGIApplication(settings.STATIC_ROOT, self.logger)
             self.logger.warning("Serving all static files from %s.\n"
                                 "*** Make sure you have done a fresh 'manage.py collectstatic' operation! ***"
                                 % settings.STATIC_ROOT)
 
-        # Setup router to intercept URLs and send to correct StaticFileWSGIApplication TODO: Confirm WSGIPathInfoDispatcher job
+        # Setup router to intercept URLs and send to correct StaticFileWSGIApplication
         self.logger.debug("path: %s" % path)
         dispatcher = WSGIPathInfoDispatcher(path)
         self.logger.debug("apps: %s" % dispatcher.apps)
 
         if self.options['verbose'] >= 1:
-            from TODO.wsgiutil import WSGIRequestLoggerMiddleware
-            dispatcher = WSGIRequestLoggerMiddleware(dispatcher)
+            from utils.WSGIUtils import WSGIRequestLoggerMiddleware
+            dispatcher = WSGIRequestLoggerMiddleware(dispatcher, self.logger)
 
             if self.options['verbose'] >= 2:
                 self.logger.setLevel(logging.INFO)
