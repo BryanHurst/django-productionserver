@@ -259,12 +259,12 @@ class Command(BaseCommand):
             if static_type == 'app':
                 # find all install apps static files and add them to the path
                 if settings.STATICFILES_FINDERS:
-                    self.logger.debug("Settings.STATICFILES_FINDERS:\n%s" % settings.STATICFILES_FINDERS)
+                    self.logger.debug("Settings.STATICFILES_FINDERS:\n%s" % str(settings.STATICFILES_FINDERS))
 
                     from django.contrib.staticfiles.finders import AppDirectoriesFinder
 
                     app_static_finder = AppDirectoriesFinder(settings.INSTALLED_APPS)
-                    self.logger.debug("app_static_finder.storages:\n%s" % app_static_finder.storages)
+                    self.logger.debug("app_static_finder.storages:\n%s" % str(app_static_finder.storages))
                     for key, val in app_static_finder.storages.items():
                         self.logger.debug(key, " static location:", val.location)
                         app_url = key.split('.')[-1] + r'/'
