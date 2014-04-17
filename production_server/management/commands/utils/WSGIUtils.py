@@ -67,7 +67,7 @@ class StaticFileWSGIApplication(object):
         """
         def done(response, output=None):
             # self.logger.debug('Done from self.static_file_root: %s' % self.static_file_root, response.status_code, response.items())
-            start_response(response.status_code, response.items())
+            start_response(str(response.status_code), response.items())
             return output or response
 
         path_info = environ['PATH_INFO']

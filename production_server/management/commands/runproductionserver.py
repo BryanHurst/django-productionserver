@@ -107,7 +107,7 @@ class Command(BaseCommand):
         make_option('--serve_static',
                     action='store_true',
                     dest='serve_static',
-                    default=True,
+                    default=False,
                     help="Serve static files directly from each app's static file folders. "
                          "Good for development. This is the Default"),
         make_option('--stop',
@@ -130,6 +130,8 @@ class Command(BaseCommand):
         else:
             if self.options['collectstatic'] and self.options['serve_static']:
                 raise AttributeError("You cannot serve individual app static files and collect static files at the same time! Choose one or the other.")
+            elif not self.options['stop'] and not self.options['collectstatic'] and not self.options['serve_static']:
+                raise AttributeError("You should select a style of static serving!")
             self.logger = logging.getLogger(self.options['server_name'])
             self.logger.setLevel(logging.WARNING)
             self.logger.addHandler(logging.StreamHandler())
@@ -219,7 +221,7 @@ class Command(BaseCommand):
         """
         self.stdout.write("Validating models...")
         self.validate(display_num_errors=True)
-        self.stdout.write("%s\n Django version: %s, using Settings: %r\n"
+        self.stdout.write("%s\nDjango version: %s, using Settings: %r\n"
                           "CherryPy Production Server is running at http://%s:%s/\n"
                           "Quit the server with Ctrl-C\n"
                           % (datetime.now().strftime('%B %d, %Y - %X'),
@@ -229,7 +231,7 @@ class Command(BaseCommand):
                              self.options['port']))
 
         self.logger.info("Launching CherryPy with the following options:\n%s" % self.options)
-        if int(self.options['verbose']) >= 2:
+        if int(self.options['verbosity']) >= 2:
             self.stdout.write("Launching with the following options:\n%s" % self.options)
 
         if self.options['screen']:
@@ -294,11 +296,11 @@ class Command(BaseCommand):
         dispatcher = WSGIPathInfoDispatcher(path)
         self.logger.debug("apps: %s" % dispatcher.apps)
 
-        if self.options['verbose'] >= 1:
+        if self.options['verbosity'] >= 1:
             from utils.WSGIUtils import WSGIRequestLoggerMiddleware
             dispatcher = WSGIRequestLoggerMiddleware(dispatcher, self.logger)
 
-            if self.options['verbose'] >= 2:
+            if self.options['verbosity'] >= 2:
                 self.logger.setLevel(logging.INFO)
             else:
                 self.logger.setLevel(10)
