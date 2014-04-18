@@ -125,7 +125,7 @@ class Command(BaseCommand):
                 return False
         else:
             self.logger = logging.getLogger(self.options['server_name'])
-            self.logger.setLevel(logging.WARNING)
+            self.logger.setLevel(logging.DEBUG)
             self.logger.addHandler(logging.StreamHandler())
 
             if '8080.pid' in options['pid_file'] and options['port'] != 8080:
@@ -136,7 +136,7 @@ class Command(BaseCommand):
         if self.options['screen']:
             if os.path.exists(self.options['pid_file']):
                 raise RuntimeError("There is already a server running with this pid_file configuration! "
-                                   "Run 'manage.py stop' to clean it up.")
+                                   "Run 'manage.py runproductionserver --stop' to clean it up.")
 
             # I haven't figured out how to detect a screen crash to auto reload yet
             self.options['auto_reload'] = False
@@ -162,18 +162,18 @@ class Command(BaseCommand):
 
                 import subprocess
                 subprocess.call("screen -dmS %s %s %s %s %s %s %s %s %s %s %s %s %s" % (self.options['server_name'],
-                                                                                     script_path,
-                                                                                     settings.BASE_DIR,
-                                                                                     self.options['working_directory'],
-                                                                                     self.options['host'],
-                                                                                     self.options['port'],
-                                                                                     self.options['server_name'],
-                                                                                     self.options['threads'],
-                                                                                     self.options['ssl_certificate'],
-                                                                                     self.options['ssl_private_key'],
-                                                                                     self.options['auto_reload'],
-                                                                                     self.options['collectstatic'],
-                                                                                     self.options['serve_static']),
+                                                                                        script_path,
+                                                                                        settings.BASE_DIR,
+                                                                                        self.options['working_directory'],
+                                                                                        self.options['host'],
+                                                                                        self.options['port'],
+                                                                                        self.options['server_name'],
+                                                                                        self.options['threads'],
+                                                                                        self.options['ssl_certificate'],
+                                                                                        self.options['ssl_private_key'],
+                                                                                        self.options['auto_reload'],
+                                                                                        self.options['collectstatic'],
+                                                                                        self.options['serve_static']),
                                 shell=True)
                 pid = subprocess.check_output("screen -ls | aqk '/\\.%s\\t/ {print strtonum($1)}"
                                               % self.options['server_name'],
@@ -239,6 +239,8 @@ class Command(BaseCommand):
         #       This is what the normal 'manage.py runserver' does, and why you don't need to collectstatic while testing
         # 2. In production, you collect all the installed apps static files into one location (single folder, or CDN)
         #       using 'manage.py collectstatic'. You run this every time you change any app's static files and deploy.
+
+        # Used to route requests through the WSGI Server to the correct app.
         path = {'/': app}
         static_type = self.options['serve_static'].lower()
         if static_type != "none":
@@ -255,7 +257,6 @@ class Command(BaseCommand):
                 self.logger.error("****")
                 raise
 
-            # Used to route static file requests through the WSGI Server.
             if static_type == 'app':
                 # find all install apps static files and add them to the path
                 if settings.STATICFILES_FINDERS:
@@ -266,7 +267,7 @@ class Command(BaseCommand):
                     app_static_finder = AppDirectoriesFinder(settings.INSTALLED_APPS)
                     self.logger.debug("app_static_finder.storages:\n%s" % str(app_static_finder.storages))
                     for key, val in app_static_finder.storages.items():
-                        self.logger.debug(key, " static location:", val.location)
+                        self.logger.debug(str(key), " static location:", str(val.location))
                         app_url = key.split('.')[-1] + r'/'
                         full_static_url = os.path.join(settings.STATIC_URL, app_url)
                         full_dir_location = os.path.join(val.location, app_url)
@@ -307,6 +308,7 @@ class Command(BaseCommand):
             int(self.options['threads']),
             self.options['server_name']
         )
+
         if self.options['ssl_certificate'] and self.options['ssl_private_key']:
             if sys.version_info < (3, 0):
                 import cherrypy.wsgiserver.wsgiserver2 as wsgiserver
@@ -327,8 +329,10 @@ class Command(BaseCommand):
                 raise
         try:
             server.start()
+            return True
         except KeyboardInterrupt:
             server.stop()
+            return True
 
     @staticmethod
     def stop_server(pidfile):
@@ -360,7 +364,7 @@ class Command(BaseCommand):
                 os.kill(pid, signal.SIGTERM)
             except OSError:  # process does not exist
                 os.remove(pidfile)
-                return
+                return True
             if poll_process(pid):
                 if os.name != "posix":
                     raise OSError("Process %s did not stop!" % pid)
@@ -370,26 +374,28 @@ class Command(BaseCommand):
                 if poll_process(pid):
                     raise OSError("Process %s did not stop!" % pid)
             os.remove(pidfile)
+            return True
 
     def change_uid_gid(self, uid, gid=None):
-        """Try to change UID and GID to the provided values.
+        """
+        Try to change UID and GID to the provided values.
         UID and GID are given as names like 'nobody' not integer.
-
-        Src: http://mail.mems-exchange.org/durusmail/quixote-users/4940/1/
+        Does not work in Windows.
         """
         if not os.geteuid() == 0:
             # Do not try to change the gid/uid if not root.
-            return
+            return False
         (uid, gid) = self.get_uid_gid(uid, gid)
         os.setgid(gid)
         os.setuid(uid)
+        return True
 
     @staticmethod
     def get_uid_gid(uid, gid=None):
-        """Try to change UID and GID to the provided values.
-        UID and GID are given as names like 'nobody' not integer.
-
-        Src: http://mail.mems-exchange.org/durusmail/quixote-users/4940/1/
+        """
+        Try to ged UID and GID of the given user and group.
+        UID and GID are returned as system integer values.
+        Does not work in Windows.
         """
         uid, default_grp = pwd.getpwnam(uid)[2:4]
         if gid is None:
@@ -402,22 +408,21 @@ class Command(BaseCommand):
         return (uid, gid)
 
     @staticmethod
-    def process_staticfiles_dirs(staticfiles_dirs, default_prefix='/'): # settings.STATIC_URL
+    def process_staticfiles_dirs(staticfiles_dirs, default_prefix='/'):
         """
-        normalizes all elements of STATICFILES_DIRS to be of ('prefix','/root/path/to/files') form
-        the prefix gets added after STATIC_URL
+        normalizes all elements of STATICFILES_DIRS to be ('/prefix', '/path/to/files')
         """
-        staticlocations=[]
-        for staticdir in staticfiles_dirs:
-            # elements of staticfiles_dirs are ether simple path strings like "/var/www/polls/static"
-            # or are tuples/
-            if isinstance(staticdir, (list, tuple)):
-                prefix, root = staticdir
+        static_locations = []
+        for static_dir in staticfiles_dirs:
+            # elements of staticfiles_dirs are ether simple path strings like "/var/www/django_project/my_app/static"
+            # or are tuples ("/static", "/var/www/django_project/my_app/static")
+            if isinstance(static_dir, (list, tuple)):
+                prefix, root = static_dir
                 root = os.path.abspath(root)
             else:
-                # default url prefix used for single path elements
-                root = os.path.abspath(staticdir)
-                prefix = os.path.join(default_prefix, os.path.basename(root))+r'/' # end with /
+                root = os.path.abspath(static_dir)
+                # Grab the location name (last part of path). This is what is in the url request (probably /static)
+                prefix = os.path.join(default_prefix, os.path.basename(root)) + '/'
 
-            staticlocations.append((prefix, root))
-        return staticlocations
+            static_locations.append((prefix, root))
+        return static_locations
