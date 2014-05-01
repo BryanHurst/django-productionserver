@@ -34,27 +34,32 @@ class Command(BaseCommand):
     """
     args = "[--option=value, use `runproductionserver help` for help]"
 
+    level = None
     logger = None
     options = None
 
     option_list = BaseCommand.option_list + (
         make_option('--host',
-                    action='store_true',
+                    action='store',
+                    type='string',
                     dest='host',
                     default='0.0.0.0',
                     help='Adapter to listen on. Default is 0.0.0.0'),
         make_option('--port',
-                    action='store_true',
+                    action='store',
+                    type='int',
                     dest='port',
                     default=8080,
                     help='Port to listen on. Default is 8080. Note, port 80 requires root access'),
         make_option('--server_name',
-                    action='store_true',
+                    action='store',
+                    type='string',
                     dest='server_name',
                     default='Django Server',
                     help="CherryPy's server_name. Defaults to 'Django Server'"),
         make_option('--threads',
-                    action='store_true',
+                    action='store',
+                    type='int',
                     dest='threads',
                     default=20,
                     help='Number of threads for server to use'),
@@ -64,32 +69,38 @@ class Command(BaseCommand):
                     default=False,
                     help='Whether to run the server in a screen. Defaults to False. Runs as daemon in Windows'),
         make_option('--working_directory',
-                    action='store_true',
+                    action='store',
+                    type='string',
                     dest='working_directory',
                     default=settings.BASE_DIR,
                     help='Directory to set as working directory when in screen. Defaults to BASE_DIR'),
         make_option('--pid_file',
-                    action='store_true',
+                    action='store',
+                    type='string',
                     dest='pid_file',
                     default=settings.BASE_DIR + '/server_8080.pid',
                     help="Write the spawned screen's id to this file. Defaults to BASE_DIR/server_PORT.pid"),
         make_option('--server_user',
-                    action='store_true',
+                    action='store',
+                    type='string',
                     dest='server_user',
                     default='www-data',
                     help="System user to run the server under. Defaults to www-data. Not available in Windows"),
         make_option('--server_group',
-                    action='store_true',
+                    action='store',
+                    type='string',
                     dest='server_group',
                     default='www-data',
                     help="System Group to run server under. Defaults to www-data. Not available in Windows"),
         make_option('--ssl_certificate',
-                    action='store_true',
+                    action='store',
+                    type='string',
                     dest='ssl_certificate',
                     default=None,
                     help="SSL Certificate file"),
         make_option('--ssl_private_key',
-                    action='store_true',
+                    action='store',
+                    type='string',
                     dest='ssl_private_key',
                     default=None,
                     help="SSL Private Key file"),
@@ -99,7 +110,8 @@ class Command(BaseCommand):
                     default=False,
                     help="Automatically reload the server upon code changes"),
         make_option('--serve_static',
-                    action='store_true',
+                    action='store',
+                    type='string',
                     dest='serve_static',
                     default='app',
                     help="--server_static=app|collect|none\n "
@@ -125,8 +137,11 @@ class Command(BaseCommand):
                 return False
         else:
             self.logger = logging.getLogger(self.options['server_name'])
-            self.logger.setLevel(logging.DEBUG)
-            self.logger.addHandler(logging.StreamHandler())
+            if self.options['verbosity'] == 1:
+                self.level = logging.INFO
+            elif self.options['verbosity'] > 1:
+                self.level = logging.DEBUG
+            self.logger.setLevel(self.level)
 
             if '8080.pid' in options['pid_file'] and options['port'] != 8080:
                 options['pid_file'].replace('8080', options['port'])
@@ -211,20 +226,18 @@ class Command(BaseCommand):
         The new way is complicated, especially through this command line thingy.
         So for now, I'm using the deprecated way.
         """
-        self.stdout.write("Validating models...")
-        self.validate(display_num_errors=True)
-        self.stdout.write("%s\nDjango version: %s, using Settings: %r\n"
-                          "CherryPy Production Server is running at http://%s:%s/\n"
-                          "Quit the server with Ctrl-C\n"
-                          % (datetime.now().strftime('%B %d, %Y - %X'),
-                             self.get_version(),
-                             settings.SETTINGS_MODULE,
-                             self.options['host'],
-                             self.options['port']))
+        self.logger.info("Validating models...")
+        self.logger.info(self.validate(display_num_errors=True))
+        self.logger.info("%s\nDjango version: %s, using Settings: %r\n"
+                         "CherryPy Production Server is running at http://%s:%s/\n"
+                         "Quit the server with Ctrl-C\n"
+                         % (datetime.now().strftime('%B %d, %Y - %X'),
+                            self.get_version(),
+                            settings.SETTINGS_MODULE,
+                            self.options['host'],
+                            self.options['port']))
 
-        self.logger.info("Launching CherryPy with the following options:\n%s" % self.options)
-        if int(self.options['verbosity']) >= 2:
-            self.stdout.write("Launching with the following options:\n%s" % self.options)
+        self.logger.debug("Launching CherryPy with the following options:\n%s" % self.options)
 
         if self.options['screen']:
             #When not in windows, change the running user and group
