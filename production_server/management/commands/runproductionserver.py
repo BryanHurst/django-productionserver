@@ -17,7 +17,7 @@ from django.core.management.base import BaseCommand
 from optparse import make_option
 
 from cherrypy.wsgiserver import CherryPyWSGIServer, WSGIPathInfoDispatcher
-from utils.WSGIUtils import StaticFileWSGIApplication
+from utils.WSGIUtils import StaticFileWSGIApplication, WSGIRequestLoggerMiddleware
 
 
 class Command(BaseCommand):
@@ -29,10 +29,10 @@ class Command(BaseCommand):
     Examples:
         Run a simple server suitable for testing
             $ manage.py runproductionserver
-            
+
         Run a server on port 80 with collected statics for production
             $ manage.py runproductionserver --port 80 --serve_static collect --screen
-            
+
         Stop a server running in the background
             $ manage.py runproductionserver --stop [pid_file]
     """
@@ -284,11 +284,11 @@ class Command(BaseCommand):
                     app_static_finder = AppDirectoriesFinder(settings.INSTALLED_APPS)
                     self.logger.debug("app_static_finder.storages:\n%s" % str(app_static_finder.storages))
                     for key, val in app_static_finder.storages.items():
-                        self.logger.debug(str(key), " static location:", str(val.location))
+                        self.logger.debug("%s static location: %s" % (str(key), str(val.location)))
                         app_url = key.split('.')[-1] + r'/'
                         full_static_url = os.path.join(settings.STATIC_URL, app_url)
                         full_dir_location = os.path.join(val.location, app_url)
-                        self.logger.debug(full_static_url, full_dir_location)
+                        self.logger.debug("%s %s" % (str(full_static_url), str(full_dir_location)))
                         path[full_static_url] = StaticFileWSGIApplication(full_dir_location, self.logger)
 
                 # Don't forget to also log other user defined static file locations
@@ -310,14 +310,7 @@ class Command(BaseCommand):
         dispatcher = WSGIPathInfoDispatcher(path)
         self.logger.debug("apps: %s" % dispatcher.apps)
 
-        if self.options['verbosity'] >= 1:
-            from utils.WSGIUtils import WSGIRequestLoggerMiddleware
-            dispatcher = WSGIRequestLoggerMiddleware(dispatcher, self.logger)
-
-            if self.options['verbosity'] >= 2:
-                self.logger.setLevel(logging.INFO)
-            else:
-                self.logger.setLevel(10)
+        dispatcher = WSGIRequestLoggerMiddleware(dispatcher, self.logger)
 
         server = CherryPyWSGIServer(
             (self.options['host'], int(self.options['port'])),
