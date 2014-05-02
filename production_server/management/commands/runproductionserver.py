@@ -29,10 +29,14 @@ class Command(BaseCommand):
     Examples:
         Run a simple server suitable for testing
             $ manage.py runproductionserver
-
-        TODO: Probably need some more examples
+            
+        Run a server on port 80 with collected statics for production
+            $ manage.py runproductionserver --port 80 --serve_static collect --screen
+            
+        Stop a server running in the background
+            $ manage.py runproductionserver --stop [pid_file]
     """
-    args = "[--option=value, use `runproductionserver help` for help]"
+    args = "[--option value, use `runproductionserver help` for help]"
 
     level = None
     logger = None
