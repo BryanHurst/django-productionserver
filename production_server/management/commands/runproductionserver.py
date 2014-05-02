@@ -135,11 +135,14 @@ class Command(BaseCommand):
 
         if self.options['stop']:
             try:
-                return self.stop_server(self.options['pid_file'])
+                if self.stop_server(self.options['pid_file']):
+                    return
+                else:
+                    return "Error shutting down server!"
             except Exception as e:
-                print e
-                return False
+                return e
         else:
+            logging.basicConfig(format='%(message)s')
             self.logger = logging.getLogger(self.options['server_name'])
             if self.options['verbosity'] == 1:
                 self.level = logging.INFO
@@ -149,7 +152,10 @@ class Command(BaseCommand):
 
             if '8080.pid' in options['pid_file'] and options['port'] != 8080:
                 options['pid_file'].replace('8080', options['port'])
-            return self.runproductionserver()
+            if self.runproductionserver():
+                return
+            else:
+                return "Error while finishing task!"
 
     def runproductionserver(self):
         if self.options['screen']:
@@ -241,7 +247,7 @@ class Command(BaseCommand):
                             self.options['host'],
                             self.options['port']))
 
-        self.logger.debug("Launching CherryPy with the following options:\n%s" % self.options)
+        self.logger.debug("Launching CherryPy with the following options:\n%s\n" % self.options)
 
         if self.options['screen']:
             #When not in windows, change the running user and group
@@ -277,7 +283,7 @@ class Command(BaseCommand):
             if static_type == 'app':
                 # find all install apps static files and add them to the path
                 if settings.STATICFILES_FINDERS:
-                    self.logger.debug("Settings.STATICFILES_FINDERS:\n%s" % str(settings.STATICFILES_FINDERS))
+                    self.logger.debug("Settings.STATICFILES_FINDERS:\n%s\n" % str(settings.STATICFILES_FINDERS))
 
                     from django.contrib.staticfiles.finders import AppDirectoriesFinder
 
@@ -306,9 +312,9 @@ class Command(BaseCommand):
                                     % settings.STATIC_ROOT)
 
         # Setup router to intercept URLs and send to correct StaticFileWSGIApplication
-        self.logger.debug("path: %s" % path)
+        self.logger.debug("\npath: %s\n" % path)
         dispatcher = WSGIPathInfoDispatcher(path)
-        self.logger.debug("apps: %s" % dispatcher.apps)
+        self.logger.debug("apps: %s\n" % dispatcher.apps)
 
         dispatcher = WSGIRequestLoggerMiddleware(dispatcher, self.logger)
 
@@ -337,6 +343,9 @@ class Command(BaseCommand):
             except ImportError:
                 Adapter = None
                 raise
+
+        logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+
         try:
             server.start()
             return True
@@ -384,7 +393,7 @@ class Command(BaseCommand):
                 if poll_process(pid):
                     raise OSError("Process %s did not stop!" % pid)
             os.remove(pidfile)
-            return True
+        return True
 
     def change_uid_gid(self, uid, gid=None):
         """
