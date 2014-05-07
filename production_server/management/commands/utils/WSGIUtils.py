@@ -77,18 +77,22 @@ class StaticFileWSGIApplication(object):
 
         # prevent escaping out of paths above our static root (e.g. via "..")
         if not file_path.startswith(self.static_file_root):
+            self.logger("%s: Attempted to access UnAuthorized Area! %s" % (environ['REMOTE_ADDR'], file_path))
             return done(HttpResponseUnAuthorized())
 
         # only allow GET or HEAD requests e.g. not PUT, DELETE, POST, etc.
         if not (environ['REQUEST_METHOD'] == 'GET' or environ['REQUEST_METHOD'] == 'HEAD'):
+            self.logger("%s: Attempted to use HTTP Method that is Not Allowed! %s %s" % (environ['REMOTE_ADDR'], environ['REQUEST_METHOD'], environ['REQUEST_URI']))
             return done(HttpResponseNotAllowed(['GET', 'HEAD']))
 
         if not os.path.exists(file_path):
+            self.logger.debug('%s: %s 404' % (environ['REMOTE_ADDR'], environ['REQUEST_URI']))
             return done(HttpResponseNotFound())
 
         try:
             fp = open(file_path, 'rb')
         except IOError:
+            self.logger("%s: Attempted to access UnAuthorized File! %s" % (environ['REMOTE_ADDR'], file_path))
             return done(HttpResponseUnAuthorized())
        
         # Static files are marked with last modified times so the client does some caching.
@@ -96,6 +100,7 @@ class StaticFileWSGIApplication(object):
         # but django has made a nice function to help with this!
         modified_time = http_date(os.stat(file_path)[stat.ST_MTIME]).encode('ascii', 'ignore')
         if environ.get('HTTP_IF_MODIFIED_SINCE', None) == modified_time:
+            self.logger.debug('%s: %s 304' % (environ['REMOTE_ADDR'], environ['REQUEST_URI']))
             return done(HttpResponseNotModified())
         else:
             response = HttpResponse(content_type=mimetypes.guess_type(file_path)[0], status=200)
@@ -118,7 +123,7 @@ class WSGIRequestLoggerMiddleware(object):
     def __call__(self, environ, start_response):
         output = self.wsgiapp(environ, start_response)
         if hasattr(output, 'status_code'):
-            self.logger.log(10, "[%s] %s %s" % (environ['REQUEST_METHOD'], environ['REQUEST_URI'], output.status_code))
+            self.logger.info("%s: [%s] %s %s" % (environ['REMOTE_ADDR'], environ['REQUEST_METHOD'], environ['REQUEST_URI'], output.status_code))
         else:
-            self.logger.log(10, "[%s] %s %s" % (environ['REQUEST_METHOD'], environ['REQUEST_URI'], repr(output)))
+            self.logger.info("%s: [%s] %s" % (environ['REMOTE_ADDR'], environ['REQUEST_METHOD'], environ['REQUEST_URI']))
         return output

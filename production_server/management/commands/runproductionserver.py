@@ -40,6 +40,9 @@ class Command(BaseCommand):
 
     level = None
     logger = None
+    log_formatter = None
+    console_logs = None
+    file_logs = None
     options = None
 
     option_list = BaseCommand.option_list + (
@@ -142,13 +145,24 @@ class Command(BaseCommand):
             except Exception as e:
                 return e
         else:
-            logging.basicConfig(format='%(message)s')
             self.logger = logging.getLogger(self.options['server_name'])
-            if self.options['verbosity'] == 1:
+            self.logger.propagate = False
+            if int(self.options['verbosity']) == 1:
                 self.level = logging.INFO
-            elif self.options['verbosity'] > 1:
+            elif int(self.options['verbosity']) > 1:
                 self.level = logging.DEBUG
-            self.logger.setLevel(self.level)
+            self.logger.setLevel(logging.DEBUG)
+
+            # Setup console logger and file logger if desired
+            self.console_logs = logging.StreamHandler()
+            self.console_logs.setLevel(self.level)
+
+            start_log_formatter = logging.Formatter('%(message)s')
+            self.log_formatter = logging.Formatter('%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+
+            self.console_logs.setFormatter(start_log_formatter)
+
+            self.logger.addHandler(self.console_logs)
 
             if '8080.pid' in options['pid_file'] and options['port'] != 8080:
                 options['pid_file'].replace('8080', options['port'])
@@ -237,7 +251,7 @@ class Command(BaseCommand):
         So for now, I'm using the deprecated way.
         """
         self.logger.info("Validating models...")
-        self.logger.info(self.validate(display_num_errors=True))
+        self.validate(display_num_errors=True)
         self.logger.info("%s\nDjango version: %s, using Settings: %r\n"
                          "CherryPy Production Server is running at http://%s:%s/\n"
                          "Quit the server with Ctrl-C\n"
@@ -344,7 +358,8 @@ class Command(BaseCommand):
                 Adapter = None
                 raise
 
-        logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+        #logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+        self.console_logs.setFormatter(self.log_formatter)
 
         try:
             server.start()
