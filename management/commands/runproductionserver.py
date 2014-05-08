@@ -17,7 +17,7 @@ from django.core.management.base import BaseCommand
 from optparse import make_option
 
 from cherrypy.wsgiserver import CherryPyWSGIServer, WSGIPathInfoDispatcher
-from utils.WSGIUtils import StaticFileWSGIApplication, WSGIRequestLoggerMiddleware
+from production_server.management.commands.utils.WSGIUtils import StaticFileWSGIApplication, WSGIRequestLoggerMiddleware
 
 
 class Command(BaseCommand):
@@ -383,7 +383,7 @@ class Command(BaseCommand):
                 try:
                     # poll the process state
                     os.kill(pid, 0)
-                except OSError, e:
+                except OSError as e:
                     if e[0] == errno.ESRCH:
                         # process has died
                         return False

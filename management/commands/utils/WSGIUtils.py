@@ -24,7 +24,7 @@ class BlockIteratorResponse(object):
     def __iter__(self):
         return self
 
-    def next(self):
+    def __next__(self):
         chunk = self.fp.read(20*1024)
         if chunk:
             return chunk
