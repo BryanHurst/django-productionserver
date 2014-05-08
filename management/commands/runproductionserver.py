@@ -200,7 +200,7 @@ class Command(BaseCommand):
                 script_path = os.path.dirname(os.path.realpath(__file__)) + '/utils/run_screen.sh'
 
                 import subprocess
-                subprocess.call("screen -dmS %s %s %s %s %s %s %s %s %s %s %s %s %s" % (self.options['server_name'],
+                subprocess.call("screen -dmS %s %s %s %s %s %s %s %s %s %s %s %s" % (self.options['server_name'],
                                                                                         script_path,
                                                                                         settings.BASE_DIR,
                                                                                         self.options['working_directory'],
@@ -211,7 +211,6 @@ class Command(BaseCommand):
                                                                                         self.options['ssl_certificate'],
                                                                                         self.options['ssl_private_key'],
                                                                                         self.options['auto_reload'],
-                                                                                        self.options['collectstatic'],
                                                                                         self.options['serve_static']),
                                 shell=True)
                 pid = subprocess.check_output("screen -ls | aqk '/\\.%s\\t/ {print strtonum($1)}"
