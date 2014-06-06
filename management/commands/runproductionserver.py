@@ -17,7 +17,7 @@ from django.core.management.base import BaseCommand
 from optparse import make_option
 
 from cherrypy.wsgiserver import CherryPyWSGIServer, WSGIPathInfoDispatcher
-from production_server.management.commands.utils.WSGIUtils import StaticFileWSGIApplication, WSGIRequestLoggerMiddleware
+from django_production_server.management.commands.utils.WSGIUtils import StaticFileWSGIApplication, WSGIRequestLoggerMiddleware
 
 
 class Command(BaseCommand):
@@ -121,10 +121,16 @@ class Command(BaseCommand):
                     type='string',
                     dest='serve_static',
                     default='app',
-                    help="--server_static=app|collect|none\n "
+                    help="--serve_static=app|collect|none\n "
                          "Serve static files directly from each app's static file folders (good for development [default]),\n"
                          "from the collected static directory at STATIC_ROOT (good for production),\n"
                          "or don't serve static files at all (not good)"),
+        make_option('--status',
+                    action='store_true',
+                    dest='status',
+                    default=False,
+                    help="Prints 'OK' if the server is currently running or 'STOPPED' if it is not runnint. "
+                         "Must define pid_file or want the status of the server from the default pid_file location"),
         make_option('--stop',
                     action='store_true',
                     dest='stop',
@@ -136,7 +142,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.options = options
 
-        if self.options['stop']:
+        if self.options['stop'] and not self.options['status']:
             try:
                 if self.stop_server(self.options['pid_file']):
                     return
@@ -144,6 +150,11 @@ class Command(BaseCommand):
                     return "Error shutting down server!"
             except Exception as e:
                 return e
+        elif self.options['status']:
+            if self.currently_running(self.options['pid_file']):
+                return "OK"
+            else:
+                return "STOPPED"
         else:
             self.logger = logging.getLogger(self.options['server_name'])
             self.logger.propagate = False
@@ -165,7 +176,7 @@ class Command(BaseCommand):
             self.logger.addHandler(self.console_logs)
 
             if '8080.pid' in options['pid_file'] and options['port'] != 8080:
-                options['pid_file'].replace('8080', options['port'])
+                options['pid_file'].replace('8080', str(options['port']))
             if self.runproductionserver():
                 return
             else:
@@ -368,29 +379,38 @@ class Command(BaseCommand):
             return True
 
     @staticmethod
+    def poll_process(pid):
+        """
+        Poll for process with given pid up to 10 times waiting .25 seconds in between each poll.
+        Returns False if the process no longer exists otherwise, True.
+        """
+        for n in range(10):
+            time.sleep(0.25)
+            try:
+                # poll the process state
+                os.kill(pid, 0)
+            except OSError, e:
+                if e[0] == errno.ESRCH:
+                    # process has died
+                    return False
+                else:
+                    raise Exception
+        return True
+
+    @staticmethod
+    def currently_running(pidfile):
+        if os.path.exists(pidfile):
+            pid = int(open(pidfile).read())
+            return Command.poll_process(pid)
+        else:
+            return False
+
+    @staticmethod
     def stop_server(pidfile):
         """
         Stop process whose pid was written to supplied pidfile.
         First try SIGTERM and if it fails, SIGKILL. If process is still running, an exception is raised.
         """
-        def poll_process(pid):
-            """
-            Poll for process with given pid up to 10 times waiting .25 seconds in between each poll.
-            Returns False if the process no longer exists otherwise, True.
-            """
-            for n in range(10):
-                time.sleep(0.25)
-                try:
-                    # poll the process state
-                    os.kill(pid, 0)
-                except OSError as e:
-                    if e[0] == errno.ESRCH:
-                        # process has died
-                        return False
-                    else:
-                        raise Exception
-            return True
-
         if os.path.exists(pidfile):
             pid = int(open(pidfile).read())
             try:
@@ -398,13 +418,13 @@ class Command(BaseCommand):
             except OSError:  # process does not exist
                 os.remove(pidfile)
                 return True
-            if poll_process(pid):
+            if Command.poll_process(pid):
                 if os.name != "posix":
                     raise OSError("Process %s did not stop!" % pid)
                 # process didn't exit cleanly, make one last effort to kill it
                 os.kill(pid, signal.SIGKILL)
                 #if still_alive(pid):
-                if poll_process(pid):
+                if Command.poll_process(pid):
                     raise OSError("Process %s did not stop!" % pid)
             os.remove(pidfile)
         return True
