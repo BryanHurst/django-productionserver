@@ -74,7 +74,9 @@ class Command(BaseCommand):
                     action='store_true',
                     dest='screen',
                     default=False,
-                    help='Whether to run the server in a screen. Defaults to False. Runs as daemon in Windows'),
+                    help='Whether to run the server in a screen. Defaults to False. '
+                         'Runs as Pythonw program with no visible terminal in Windows. '
+                         'Forces log_to_file when in Windows'),
         make_option('--working_directory',
                     action='store',
                     type='string',
@@ -153,6 +155,9 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.options = options
 
+        if '8080.pid' in options['pid_file'] and options['port'] != 8080:
+                options['pid_file'].replace('8080', str(options['port']))
+
         # SETUP LOGGER
         self.logger = logging.getLogger(self.options['pid_file'])
         self.logger.propagate = False
@@ -200,8 +205,6 @@ class Command(BaseCommand):
                 sys.stdout.write("STOPPED")
                 return False
         else:
-            if '8080.pid' in options['pid_file'] and options['port'] != 8080:
-                options['pid_file'].replace('8080', str(options['port']))
             if self.runproductionserver():
                 return
             else:
@@ -222,19 +225,15 @@ class Command(BaseCommand):
                     python_location = os.path.dirname(sys.executable)
                     python_executable = python_location + '\\pythonw.exe'
                     manage_command = settings.BASE_DIR + '\\manage.py runproductionserver'
-                    if self.options['log_to_file']:
-                        log_to_file = '--log_to_file'
-                    else:
-                        log_to_file = ''
                     command_string = "%s %s working_directory='%s' host=%s port=%s server_name='%s' threads=%s " \
-                                     "ssl_certificate='%s' ssl_private_key='%s' auto_reload=%s serve_static=%s %s" \
+                                     "ssl_certificate='%s' ssl_private_key='%s' auto_reload=%s serve_static=%s --log_to_file --with_pid" \
                                      % (python_executable, manage_command, self.options['working_directory'],
                                         self.options['host'], self.options['port'], self.options['server_name'],
                                         self.options['threads'], self.options['ssl_certificate'],
                                         self.options['ssl_private_key'], self.options['auto_reload'],
-                                        self.options['serve_static'], log_to_file)
+                                        self.options['serve_static'])
                     print command_string
-                    subprocess.call(command_string, shell=True)
+                    subprocess.Popen(command_string, shell=True)
                     return True
                 except Exception as e:
                     logging.info(e)
