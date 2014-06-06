@@ -74,9 +74,7 @@ class Command(BaseCommand):
                     action='store_true',
                     dest='screen',
                     default=False,
-                    help='Whether to run the server in a screen. Defaults to False. '
-                         'Runs as Pythonw program with no visible terminal in Windows. '
-                         'Forces log_to_file when in Windows'),
+                    help='Whether to run the server in a screen. Defaults to False. Runs as daemon in Windows'),
         make_option('--working_directory',
                     action='store',
                     type='string',
@@ -155,9 +153,6 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.options = options
 
-        if '8080.pid' in options['pid_file'] and options['port'] != 8080:
-                options['pid_file'].replace('8080', str(options['port']))
-
         # SETUP LOGGER
         self.logger = logging.getLogger(self.options['pid_file'])
         self.logger.propagate = False
@@ -190,6 +185,7 @@ class Command(BaseCommand):
         if self.options['stop'] and not self.options['status']:
             try:
                 if self.stop_server(self.options['pid_file']):
+                    sys.stdout.write("OK")
                     return
                 else:
                     self.logger.error("Error shutting down server!")
@@ -199,16 +195,19 @@ class Command(BaseCommand):
                 return False
         elif self.options['status']:
             if self.currently_running(self.options['pid_file']):
-                sys.stdout.write("OK")
-                return True
+                sys.stdout.write("RUNNING")
+                return
             else:
                 sys.stdout.write("STOPPED")
-                return False
+                return
         else:
+            if '8080.pid' in options['pid_file'] and options['port'] != 8080:
+                options['pid_file'].replace('8080', str(options['port']))
             if self.runproductionserver():
                 return
             else:
-                return "Error while finishing task!"
+                self.logger.error("Error while finishing task!")
+                return False
 
     def runproductionserver(self):
         if self.options['screen']:
@@ -470,12 +469,19 @@ class Command(BaseCommand):
                 return True
             if Command.poll_process(pid):
                 if os.name != "posix":
-                    raise OSError("Process %s did not stop!" % pid)
-                # process didn't exit cleanly, make one last effort to kill it
-                os.kill(pid, signal.SIGKILL)
-                #if still_alive(pid):
-                if Command.poll_process(pid):
-                    raise OSError("Process %s did not stop!" % pid)
+                    try:
+                        os.kill(pid, signal.SIGTERM)
+                    except OSError:
+                        os.remove(pidfile)
+                        return True
+                    if Command.poll_process(pid):
+                        raise OSError("Process %s did not stop!" % pid)
+                else:
+                    # process didn't exit cleanly, make one last effort to kill it
+                    os.kill(pid, signal.SIGKILL)
+                    #if still_alive(pid):
+                    if Command.poll_process(pid):
+                        raise OSError("Process %s did not stop!" % pid)
             os.remove(pidfile)
         return True
 
