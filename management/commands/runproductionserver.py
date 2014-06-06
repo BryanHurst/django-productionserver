@@ -154,7 +154,7 @@ class Command(BaseCommand):
         self.options = options
 
         # SETUP LOGGER
-        self.logger = logging.getLogger(self.options['server_name'])
+        self.logger = logging.getLogger(self.options['pid_file'])
         self.logger.propagate = False
         if int(self.options['verbosity']) == 1:
             self.level = logging.INFO
@@ -226,19 +226,15 @@ class Command(BaseCommand):
                         log_to_file = '--log_to_file'
                     else:
                         log_to_file = ''
-                    subprocess.call("%s %s working_directory=%s host=%s port=%s server_name=%s threads=%s ssl_certificate=%s ssl_private_key=%s auto_reload=%s serve_static=%s %s" % (python_executable,
-                                                                                                                                                                                   manage_command,
-                                                                                                                                                                                   self.options['working_directory'],
-                                                                                                                                                                                   self.options['host'],
-                                                                                                                                                                                   self.options['port'],
-                                                                                                                                                                                   self.options['server_name'],
-                                                                                                                                                                                   self.options['threads'],
-                                                                                                                                                                                   self.options['ssl_certificate'],
-                                                                                                                                                                                   self.options['ssl_private_key'],
-                                                                                                                                                                                   self.options['auto_reload'],
-                                                                                                                                                                                   self.options['serve_static'],
-                                                                                                                                                                                   log_to_file),
-                                    shell=True)
+                    command_string = "%s %s working_directory=%s host=%s port=%s server_name=%s threads=%s " \
+                                     "ssl_certificate=%s ssl_private_key=%s auto_reload=%s serve_static=%s %s" \
+                                     % (python_executable, manage_command, self.options['working_directory'],
+                                        self.options['host'], self.options['port'], self.options['server_name'],
+                                        self.options['threads'], self.options['ssl_certificate'],
+                                        self.options['ssl_private_key'], self.options['auto_reload'],
+                                        self.options['serve_static'], log_to_file)
+                    print command_string
+                    subprocess.call(command_string, shell=True)
                     return True
                 except Exception as e:
                     logging.info(e)
@@ -257,19 +253,15 @@ class Command(BaseCommand):
                         log_to_file = '--log_to_file'
                 else:
                     log_to_file = ''
-                subprocess.call("%s -dmS python %s working_directory=%s host=%s port=%s server_name=%s threads=%s ssl_certificate=%s ssl_private_key=%s auto_reload=%s serve_static=%s %s" % (invocation,
-                                                                                                                                                                                           manage_command,
-                                                                                                                                                                                           self.options['working_directory'],
-                                                                                                                                                                                           self.options['host'],
-                                                                                                                                                                                           self.options['port'],
-                                                                                                                                                                                           self.options['server_name'],
-                                                                                                                                                                                           self.options['threads'],
-                                                                                                                                                                                           self.options['ssl_certificate'],
-                                                                                                                                                                                           self.options['ssl_private_key'],
-                                                                                                                                                                                           self.options['auto_reload'],
-                                                                                                                                                                                           self.options['serve_static'],
-                                                                                                                                                                                           log_to_file),
-                                shell=True)
+                command_string = "%s -dmS python %s working_directory=%s host=%s port=%s server_name=%s " \
+                                 "threads=%s ssl_certificate=%s ssl_private_key=%s auto_reload=%s serve_static=%s %s" \
+                                 % (invocation, manage_command, self.options['working_directory'],
+                                    self.options['host'], self.options['port'], self.options['server_name'],
+                                    self.options['threads'], self.options['ssl_certificate'],
+                                    self.options['ssl_private_key'], self.options['auto_reload'],
+                                    self.options['serve_static'], log_to_file)
+                print command_string
+                subprocess.call(command_string, shell=True)
                 pid = subprocess.check_output("screen -ls | aqk '/\\.%s\\t/ {print strtonum($1)}"
                                               % self.options['server_name'],
                                               shell=True)
