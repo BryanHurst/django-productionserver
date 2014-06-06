@@ -31,6 +31,8 @@ class BlockIteratorResponse(object):
         self.fp.close()
         raise StopIteration
 
+    def next(self):
+        return self.__next__()
 
 class StaticFileWSGIApplication(object):
     """
