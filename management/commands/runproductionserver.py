@@ -87,6 +87,12 @@ class Command(BaseCommand):
                     dest='pid_file',
                     default=settings.BASE_DIR + '/server_8080.pid',
                     help="Write the spawned screen's id to this file. Defaults to BASE_DIR/server_PORT.pid"),
+        make_option('--with_pid',
+                    action='store_true',
+                    dest='with_pid',
+                    default=False,
+                    help='Normally not needed and used for internal purposes. '
+                         'Should the script create a PID file for the server running in the current terminal'),
         make_option('--server_user',
                     action='store',
                     type='string',
@@ -188,41 +194,52 @@ class Command(BaseCommand):
                 raise RuntimeError("There is already a server running with this pid_file configuration! "
                                    "Run 'manage.py runproductionserver --stop' to clean it up.")
 
-            # I haven't figured out how to detect a screen crash to auto reload yet
-            self.options['auto_reload'] = False
-
             if os.name != 'posix':
-                # Windows doesn't have screen, so we will use Django's daemonize function
-                from django.utils.daemonize import become_daemon
-                become_daemon(our_home_dir=self.options['working_directory'])
-
-                fp = open(self.options['pid_file'], 'w')
-                fp.write("%d\n" % os.getpid())
-                fp.close()
-
+                # Windows doesn't have screen, so we will use Python's pythonw.exe to hide the terminal
                 logging.info('Starting server in background process with options:\n%s' % self.options)
 
                 try:
-                    self.start_server()
+                    import subprocess
+                    python_location = os.path.dirname(sys.executable)
+                    python_executable = python_location + '\\pythonw.exe'
+                    manage_command = settings.BASE_DIR + '\\manage.py runproductionserver'
+                    subprocess.call("%s %s working_directory=%s host=%s port=%s server_name=%s threads=%s ssl_certificate=%s ssl_private_key=%s auto_reload=%s serve_static=%s" % (python_executable,
+                                                                                                                                                                                   manage_command,
+                                                                                                                                                                                   self.options['working_directory'],
+                                                                                                                                                                                   self.options['host'],
+                                                                                                                                                                                   self.options['port'],
+                                                                                                                                                                                   self.options['server_name'],
+                                                                                                                                                                                   self.options['threads'],
+                                                                                                                                                                                   self.options['ssl_certificate'],
+                                                                                                                                                                                   self.options['ssl_private_key'],
+                                                                                                                                                                                   self.options['auto_reload'],
+                                                                                                                                                                                   self.options['serve_static']),
+                                    shell=True)
+                    return True
                 except Exception as e:
                     logging.info(e)
             else:
-                # Launch a screen
-                script_path = os.path.dirname(os.path.realpath(__file__)) + '/utils/run_screen.sh'
+                # We are in linux of mac, so Launch a screen
+                logging.info("Starting server in screen %s with options:\n%s" % (self.options['server_name'], self.options))
 
                 import subprocess
-                subprocess.call("screen -dmS %s %s %s %s %s %s %s %s %s %s %s %s" % (self.options['server_name'],
-                                                                                        script_path,
-                                                                                        settings.BASE_DIR,
-                                                                                        self.options['working_directory'],
-                                                                                        self.options['host'],
-                                                                                        self.options['port'],
-                                                                                        self.options['server_name'],
-                                                                                        self.options['threads'],
-                                                                                        self.options['ssl_certificate'],
-                                                                                        self.options['ssl_private_key'],
-                                                                                        self.options['auto_reload'],
-                                                                                        self.options['serve_static']),
+                manage_command = settings.BASE_DIR + '/manage.py runproductionserver'
+                if int(self.options['port']) < 1024:
+                    logging.error("You are trying to bind to a restricted port; this will require root privileges...")
+                    invocation = "sudo screen"
+                else:
+                    invocation = "screen"
+                subprocess.call("%s -dmS python %s working_directory=%s host=%s port=%s server_name=%s threads=%s ssl_certificate=%s ssl_private_key=%s auto_reload=%s serve_static=%s" % (invocation,
+                                                                                                                                                                                           manage_command,
+                                                                                                                                                                                           self.options['working_directory'],
+                                                                                                                                                                                           self.options['host'],
+                                                                                                                                                                                           self.options['port'],
+                                                                                                                                                                                           self.options['server_name'],
+                                                                                                                                                                                           self.options['threads'],
+                                                                                                                                                                                           self.options['ssl_certificate'],
+                                                                                                                                                                                           self.options['ssl_private_key'],
+                                                                                                                                                                                           self.options['auto_reload'],
+                                                                                                                                                                                           self.options['serve_static']),
                                 shell=True)
                 pid = subprocess.check_output("screen -ls | aqk '/\\.%s\\t/ {print strtonum($1)}"
                                               % self.options['server_name'],
@@ -230,10 +247,14 @@ class Command(BaseCommand):
                 f = open(self.options['pid_file'], 'w')
                 f.write("%d\n" % pid)
                 f.close()
-                logging.info("Starting server in screen %s with options:\n%s" % (self.options['server_name'], self.options))
                 return True
         elif self.options['auto_reload']:
             # Running auto reloading server in the current console
+            if self.options['with_pid']:
+                fp = open(self.options['pid_file'], 'w')
+                fp.write("%d\n" % os.getpid())
+                fp.close()
+
             import django.utils.autoreload
             logging.info('Starting auto reloading server with options:\n%s' % self.options)
             try:
@@ -244,6 +265,11 @@ class Command(BaseCommand):
                 return False
         else:
             # Running normal server in the current console
+            if self.options['with_pid']:
+                fp = open(self.options['pid_file'], 'w')
+                fp.write("%d\n" % os.getpid())
+                fp.close()
+
             logging.info('Starting server with options:\n%s' % self.options)
             try:
                 return self.start_server()
