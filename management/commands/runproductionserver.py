@@ -226,8 +226,8 @@ class Command(BaseCommand):
                         log_to_file = '--log_to_file'
                     else:
                         log_to_file = ''
-                    command_string = "%s %s working_directory=%s host=%s port=%s server_name=%s threads=%s " \
-                                     "ssl_certificate=%s ssl_private_key=%s auto_reload=%s serve_static=%s %s" \
+                    command_string = "%s %s working_directory='%s' host=%s port=%s server_name='%s' threads=%s " \
+                                     "ssl_certificate='%s' ssl_private_key='%s' auto_reload=%s serve_static=%s %s" \
                                      % (python_executable, manage_command, self.options['working_directory'],
                                         self.options['host'], self.options['port'], self.options['server_name'],
                                         self.options['threads'], self.options['ssl_certificate'],
@@ -253,8 +253,8 @@ class Command(BaseCommand):
                         log_to_file = '--log_to_file'
                 else:
                     log_to_file = ''
-                command_string = "%s -dmS python %s working_directory=%s host=%s port=%s server_name=%s " \
-                                 "threads=%s ssl_certificate=%s ssl_private_key=%s auto_reload=%s serve_static=%s %s" \
+                command_string = "%s -dmS python %s working_directory='%s' host=%s port=%s server_name='%s' " \
+                                 "threads=%s ssl_certificate='%s' ssl_private_key='%s' auto_reload=%s serve_static=%s %s" \
                                  % (invocation, manage_command, self.options['working_directory'],
                                     self.options['host'], self.options['port'], self.options['server_name'],
                                     self.options['threads'], self.options['ssl_certificate'],
