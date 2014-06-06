@@ -87,6 +87,11 @@ class Command(BaseCommand):
                     dest='pid_file',
                     default=settings.BASE_DIR + '/server_8080.pid',
                     help="Write the spawned screen's id to this file. Defaults to BASE_DIR/server_PORT.pid"),
+        make_option('--log_to_file',
+                    action='store_true',
+                    dest='log_to_file',
+                    default=False,
+                    help='Should logging be saved to a file'),
         make_option('--with_pid',
                     action='store_true',
                     dest='with_pid',
@@ -148,39 +153,53 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.options = options
 
+        # SETUP LOGGER
+        self.logger = logging.getLogger(self.options['server_name'])
+        self.logger.propagate = False
+        if int(self.options['verbosity']) == 1:
+            self.level = logging.INFO
+        elif int(self.options['verbosity']) > 1:
+            self.level = logging.DEBUG
+        self.logger.setLevel(logging.DEBUG)
+
+        # Setup console logger and file logger if desired
+        self.console_logs = logging.StreamHandler()
+        self.console_logs.setLevel(self.level)
+        if self.options['log_to_file']:
+            log_file = self.options['pid_file'].replace('.pid', '.log')
+            self.file_logs = logging.FileHandler(log_file)
+            self.file_logs.setLevel(self.level)
+
+        start_log_formatter = logging.Formatter('%(message)s')
+        self.log_formatter = logging.Formatter('%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+
+        self.console_logs.setFormatter(start_log_formatter)
+        if self.options['log_to_file']:
+            self.file_logs.setFormatter(start_log_formatter)
+
+        self.logger.addHandler(self.console_logs)
+        if self.options['log_to_file']:
+            self.logger.addHandler(self.file_logs)
+
+        # START COMMAND PROCESSING
         if self.options['stop'] and not self.options['status']:
             try:
                 if self.stop_server(self.options['pid_file']):
                     return
                 else:
-                    return "Error shutting down server!"
+                    self.logger.error("Error shutting down server!")
+                    return False
             except Exception as e:
-                return e
+                self.logger.error("Error shutting down server! " + str(e))
+                return False
         elif self.options['status']:
             if self.currently_running(self.options['pid_file']):
-                return "OK"
+                sys.stdout.write("OK")
+                return True
             else:
-                return "STOPPED"
+                sys.stdout.write("STOPPED")
+                return False
         else:
-            self.logger = logging.getLogger(self.options['server_name'])
-            self.logger.propagate = False
-            if int(self.options['verbosity']) == 1:
-                self.level = logging.INFO
-            elif int(self.options['verbosity']) > 1:
-                self.level = logging.DEBUG
-            self.logger.setLevel(logging.DEBUG)
-
-            # Setup console logger and file logger if desired
-            self.console_logs = logging.StreamHandler()
-            self.console_logs.setLevel(self.level)
-
-            start_log_formatter = logging.Formatter('%(message)s')
-            self.log_formatter = logging.Formatter('%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
-
-            self.console_logs.setFormatter(start_log_formatter)
-
-            self.logger.addHandler(self.console_logs)
-
             if '8080.pid' in options['pid_file'] and options['port'] != 8080:
                 options['pid_file'].replace('8080', str(options['port']))
             if self.runproductionserver():
@@ -203,7 +222,11 @@ class Command(BaseCommand):
                     python_location = os.path.dirname(sys.executable)
                     python_executable = python_location + '\\pythonw.exe'
                     manage_command = settings.BASE_DIR + '\\manage.py runproductionserver'
-                    subprocess.call("%s %s working_directory=%s host=%s port=%s server_name=%s threads=%s ssl_certificate=%s ssl_private_key=%s auto_reload=%s serve_static=%s" % (python_executable,
+                    if self.options['log_to_file']:
+                        log_to_file = '--log_to_file'
+                    else:
+                        log_to_file = ''
+                    subprocess.call("%s %s working_directory=%s host=%s port=%s server_name=%s threads=%s ssl_certificate=%s ssl_private_key=%s auto_reload=%s serve_static=%s %s" % (python_executable,
                                                                                                                                                                                    manage_command,
                                                                                                                                                                                    self.options['working_directory'],
                                                                                                                                                                                    self.options['host'],
@@ -213,7 +236,8 @@ class Command(BaseCommand):
                                                                                                                                                                                    self.options['ssl_certificate'],
                                                                                                                                                                                    self.options['ssl_private_key'],
                                                                                                                                                                                    self.options['auto_reload'],
-                                                                                                                                                                                   self.options['serve_static']),
+                                                                                                                                                                                   self.options['serve_static'],
+                                                                                                                                                                                   log_to_file),
                                     shell=True)
                     return True
                 except Exception as e:
@@ -229,7 +253,11 @@ class Command(BaseCommand):
                     invocation = "sudo screen"
                 else:
                     invocation = "screen"
-                subprocess.call("%s -dmS python %s working_directory=%s host=%s port=%s server_name=%s threads=%s ssl_certificate=%s ssl_private_key=%s auto_reload=%s serve_static=%s" % (invocation,
+                if self.options['log_to_file']:
+                        log_to_file = '--log_to_file'
+                else:
+                    log_to_file = ''
+                subprocess.call("%s -dmS python %s working_directory=%s host=%s port=%s server_name=%s threads=%s ssl_certificate=%s ssl_private_key=%s auto_reload=%s serve_static=%s %s" % (invocation,
                                                                                                                                                                                            manage_command,
                                                                                                                                                                                            self.options['working_directory'],
                                                                                                                                                                                            self.options['host'],
@@ -239,7 +267,8 @@ class Command(BaseCommand):
                                                                                                                                                                                            self.options['ssl_certificate'],
                                                                                                                                                                                            self.options['ssl_private_key'],
                                                                                                                                                                                            self.options['auto_reload'],
-                                                                                                                                                                                           self.options['serve_static']),
+                                                                                                                                                                                           self.options['serve_static'],
+                                                                                                                                                                                           log_to_file),
                                 shell=True)
                 pid = subprocess.check_output("screen -ls | aqk '/\\.%s\\t/ {print strtonum($1)}"
                                               % self.options['server_name'],
@@ -396,6 +425,8 @@ class Command(BaseCommand):
 
         #logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
         self.console_logs.setFormatter(self.log_formatter)
+        if self.options['log_to_file']:
+            self.file_logs.setFormatter(self.log_formatter)
 
         try:
             server.start()
@@ -416,9 +447,11 @@ class Command(BaseCommand):
                 # poll the process state
                 os.kill(pid, 0)
             except OSError, e:
-                if e[0] == errno.ESRCH:
+                if e.errno == errno.ESRCH:
                     # process has died
                     return False
+                elif e.errno == errno.EPERM:
+                    return True
                 else:
                     raise Exception
         return True
