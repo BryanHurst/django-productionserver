@@ -25,18 +25,22 @@ class Command(BaseCommand):
     Taking place of the 'manage.py runserver', which is for development purposes only, this is suitable for small to medium server deployments.
 
     CherryPy (http://www.cherrypy.org) is required.
+    Futures (https://pypi.python.org/pypi/futures) is required.
 
     Examples:
         Run a simple server suitable for testing
             $ manage.py runproductionserver
 
         Run a server on port 80 with collected statics for production
-            $ manage.py runproductionserver --port 80 --serve_static collect --screen
+            $ manage.py runproductionserver --port=80 --serve_static=collect --screen
 
         Stop a server running in the background
-            $ manage.py runproductionserver --stop [pid_file]
+            $ manage.py runproductionserver --stop --pid_file=[pid_file]
+
+        Stop a server running in the background with default pid_file but non-default port
+            $ manage.py runproductionserver --stop --port=80
     """
-    args = "[--option value, use `runproductionserver help` for help]"
+    args = "[--option=value, use `runproductionserver help` for help]"
 
     level = None
     logger = None
@@ -68,7 +72,7 @@ class Command(BaseCommand):
                     action='store',
                     type='int',
                     dest='threads',
-                    default=20,
+                    default=4,
                     help='Number of threads for server to use'),
         make_option('--screen',
                     action='store_true',
@@ -147,11 +151,16 @@ class Command(BaseCommand):
                     dest='stop',
                     default=False,
                     help="Stop a currently running server either in a screen or daemon. "
-                         "Must define pid_file or want to kill the server running from the default pid_file location"),
+                         "Must define pid_file or want to kill the server running from the default pid_file location. "
+                         "If you did not define a new PID file, but started the server on a port other than default, "
+                         "then you must define the port number"),
     )
 
     def handle(self, *args, **options):
         self.options = options
+
+        if '8080.pid' in self.options['pid_file'] and self.options['port'] != 8080:
+                self.options['pid_file'] = self.options['pid_file'].replace('8080', str(self.options['port']))
 
         # SETUP LOGGER
         self.logger = logging.getLogger(self.options['pid_file'])
@@ -185,7 +194,7 @@ class Command(BaseCommand):
         if self.options['stop'] and not self.options['status']:
             try:
                 if self.stop_server(self.options['pid_file']):
-                    sys.stdout.write("OK")
+                    sys.stdout.write("OK\n")
                     return
                 else:
                     self.logger.error("Error shutting down server!")
@@ -195,14 +204,12 @@ class Command(BaseCommand):
                 return False
         elif self.options['status']:
             if self.currently_running(self.options['pid_file']):
-                sys.stdout.write("RUNNING")
+                sys.stdout.write("RUNNING\n")
                 return
             else:
-                sys.stdout.write("STOPPED")
+                sys.stdout.write("STOPPED\n")
                 return
         else:
-            if '8080.pid' in options['pid_file'] and options['port'] != 8080:
-                options['pid_file'].replace('8080', str(options['port']))
             if self.runproductionserver():
                 return
             else:
@@ -224,14 +231,23 @@ class Command(BaseCommand):
                     python_location = os.path.dirname(sys.executable)
                     python_executable = python_location + '\\pythonw.exe'
                     manage_command = settings.BASE_DIR + '\\manage.py runproductionserver'
+                    if self.options['auto_reload']:
+                        auto_reload = '--auto_reload'
+                    else:
+                        auto_reload = ''
+                    if self.options['ssl_certificate'] or self.options['ssl_private_key']:
+                        ssl_certificate = "--ssl_certificate='" + str(self.options['ssl_certificate']) + "'"
+                        ssl_private_key = "--ssl_private_key='" + str(self.options['ssl_private_key']) + "'"
+                    else:
+                        ssl_certificate = ''
+                        ssl_private_key = ''
                     command_string = "%s %s working_directory='%s' host=%s port=%s server_name='%s' threads=%s " \
-                                     "ssl_certificate='%s' ssl_private_key='%s' auto_reload=%s serve_static=%s --log_to_file --with_pid" \
+                                     "%s %s %s serve_static=%s --log_to_file --with_pid" \
                                      % (python_executable, manage_command, self.options['working_directory'],
                                         self.options['host'], self.options['port'], self.options['server_name'],
-                                        self.options['threads'], self.options['ssl_certificate'],
-                                        self.options['ssl_private_key'], self.options['auto_reload'],
+                                        self.options['threads'], ssl_certificate,
+                                        ssl_private_key, auto_reload,
                                         self.options['serve_static'])
-                    print command_string
                     subprocess.Popen(command_string, shell=True)
                     return True
                 except Exception as e:
@@ -251,18 +267,28 @@ class Command(BaseCommand):
                         log_to_file = '--log_to_file'
                 else:
                     log_to_file = ''
-                command_string = "%s -dmS python %s working_directory='%s' host=%s port=%s server_name='%s' " \
-                                 "threads=%s ssl_certificate='%s' ssl_private_key='%s' auto_reload=%s serve_static=%s %s" \
-                                 % (invocation, manage_command, self.options['working_directory'],
+                if self.options['auto_reload']:
+                    auto_reload = '--auto_reload'
+                else:
+                    auto_reload = ''
+                if self.options['ssl_certificate'] or self.options['ssl_private_key']:
+                        ssl_certificate = "--ssl_certificate='" + str(self.options['ssl_certificate']) + "'"
+                        ssl_private_key = "--ssl_private_key='" + str(self.options['ssl_private_key']) + "'"
+                else:
+                    ssl_certificate = ''
+                    ssl_private_key = ''
+                command_string = "%s -dmS '%s' python %s --working_directory='%s' --host=%s --port=%s --server_name='%s' " \
+                                 "--threads=%s %s %s %s --serve_static=%s %s" \
+                                 % (invocation, self.options['server_name'], manage_command, self.options['working_directory'],
                                     self.options['host'], self.options['port'], self.options['server_name'],
-                                    self.options['threads'], self.options['ssl_certificate'],
-                                    self.options['ssl_private_key'], self.options['auto_reload'],
+                                    self.options['threads'], ssl_certificate,
+                                    ssl_private_key, auto_reload,
                                     self.options['serve_static'], log_to_file)
-                print command_string
                 subprocess.call(command_string, shell=True)
-                pid = subprocess.check_output("screen -ls | aqk '/\\.%s\\t/ {print strtonum($1)}"
+                pid = subprocess.check_output("screen -ls | awk '/\\.%s\\t/ {print $1}'"
                                               % self.options['server_name'],
                                               shell=True)
+                pid = int(str(pid).split('.')[0])
                 f = open(self.options['pid_file'], 'w')
                 f.write("%d\n" % pid)
                 f.close()
@@ -424,6 +450,9 @@ class Command(BaseCommand):
         except KeyboardInterrupt:
             server.stop()
             return True
+        except Exception as e:
+            self.logger.error(str(e))
+            return False
 
     @staticmethod
     def poll_process(pid):
@@ -483,6 +512,9 @@ class Command(BaseCommand):
                     if Command.poll_process(pid):
                         raise OSError("Process %s did not stop!" % pid)
             os.remove(pidfile)
+        else:
+            sys.stdout.write("The given PID file does not exist! Specify the PID file you started the server with, "
+                             "or the port of the server if you didn't change the PID file.\n")
         return True
 
     def change_uid_gid(self, uid, gid=None):
