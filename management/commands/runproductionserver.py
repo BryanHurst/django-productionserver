@@ -194,7 +194,7 @@ class Command(BaseCommand):
         if self.options['stop'] and not self.options['status']:
             try:
                 if self.stop_server(self.options['pid_file']):
-                    sys.stdout.write("OK\n")
+                    self.stdout.write("OK\n")
                     return
                 else:
                     self.logger.error("Error shutting down server!")
@@ -204,10 +204,10 @@ class Command(BaseCommand):
                 return False
         elif self.options['status']:
             if self.currently_running(self.options['pid_file']):
-                sys.stdout.write("RUNNING\n")
+                self.stdout.write("RUNNING\n")
                 return
             else:
-                sys.stdout.write("STOPPED\n")
+                self.stdout.write("STOPPED\n")
                 return
         else:
             if self.runproductionserver():
@@ -483,8 +483,7 @@ class Command(BaseCommand):
         else:
             return False
 
-    @staticmethod
-    def stop_server(pidfile):
+    def stop_server(self, pidfile):
         """
         Stop process whose pid was written to supplied pidfile.
         First try SIGTERM and if it fails, SIGKILL. If process is still running, an exception is raised.
@@ -513,7 +512,7 @@ class Command(BaseCommand):
                         raise OSError("Process %s did not stop!" % pid)
             os.remove(pidfile)
         else:
-            sys.stdout.write("The given PID file does not exist! Specify the PID file you started the server with, "
+            self.stdout.write("The given PID file does not exist! Specify the PID file you started the server with, "
                              "or the port of the server if you didn't change the PID file.\n")
         return True
 
