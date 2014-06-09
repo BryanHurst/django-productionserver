@@ -208,7 +208,7 @@ class Command(BaseCommand):
                 return
             else:
                 self.stdout.write("STOPPED\n")
-                return
+                return False
         else:
             if self.runproductionserver():
                 return
@@ -479,7 +479,10 @@ class Command(BaseCommand):
     def currently_running(pidfile):
         if os.path.exists(pidfile):
             pid = int(open(pidfile).read())
-            return Command.poll_process(pid)
+            running = Command.poll_process(pid)
+            if not running:
+                os.remove(pidfile)
+            return running
         else:
             return False
 
