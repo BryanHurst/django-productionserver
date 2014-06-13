@@ -96,6 +96,11 @@ class Command(BaseCommand):
                     dest='log_to_file',
                     default=False,
                     help='Should logging be saved to a file'),
+        make_option('--no_console_output',
+                    action='store_true',
+                    dest='no_console_output',
+                    default=False,
+                    help='Should logging output to the console be suppressed'),
         make_option('--with_pid',
                     action='store_true',
                     dest='with_pid',
@@ -186,7 +191,8 @@ class Command(BaseCommand):
         if self.options['log_to_file']:
             self.file_logs.setFormatter(start_log_formatter)
 
-        self.logger.addHandler(self.console_logs)
+        if not self.options['no_console_output']:
+            self.logger.addHandler(self.console_logs)
         if self.options['log_to_file']:
             self.logger.addHandler(self.file_logs)
 
@@ -515,7 +521,7 @@ class Command(BaseCommand):
                         raise OSError("Process %s did not stop!" % pid)
             os.remove(pidfile)
         else:
-            self.stdout.write("The given PID file does not exist! Specify the PID file you started the server with, "
+            self.logger.error("The given PID file does not exist! Specify the PID file you started the server with, "
                              "or the port of the server if you didn't change the PID file.\n")
         return True
 
