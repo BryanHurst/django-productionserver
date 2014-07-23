@@ -471,7 +471,7 @@ class Command(BaseCommand):
             try:
                 # poll the process state
                 os.kill(pid, 0)
-            except OSError, e:
+            except OSError as e:
                 if e.errno == errno.ESRCH:
                     # process has died
                     return False
