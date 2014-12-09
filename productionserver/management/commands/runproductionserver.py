@@ -17,7 +17,7 @@ from django.core.management.base import BaseCommand
 from optparse import make_option
 
 from cherrypy.wsgiserver import CherryPyWSGIServer, WSGIPathInfoDispatcher
-from django_production_server.management.commands.utils.WSGIUtils import StaticFileWSGIApplication, WSGIRequestLoggerMiddleware
+from productionserver.management.commands.utils.WSGIUtils import StaticFileWSGIApplication, WSGIRequestLoggerMiddleware
 
 
 class Command(BaseCommand):
