@@ -9,6 +9,6 @@ setup(
     license='',
     author='Bryan Hurst',
     author_email='bryan@newline.us',
-    description='Runs a Django Project using CherryPy as the App Server and NGinx as the Static Asset Server.',
-    requires=['cherrypy', 'django']
+    description='Runs a Django Project using CherryPy as the App Server and nginx as the Static Asset Server.',
+    requires=['futures', 'cherrypy', 'django']
 )
