@@ -75,21 +75,28 @@ class Command(BaseCommand):
         # Get the DJANGO_BASE nginx conf file and copy it to the running project's base dir as nginx.conf.
         # Startup nginx with a passed in conf file of the one in the project's base dir.
         # nginx -c settings.BASE_DIR/nginx.conf
-        if os.path.isfile(os.path.join(settings.BASE_DIR, 'nginx.conf')):
-            os.remove(os.path.join(settings.BASE_DIR, 'nginx.conf'))
+        if not os.path.exists(os.path.join(settings.BASE_DIR, 'nginx', 'conf')):
+            os.makedirs(os.path.join(settings.BASE_DIR, 'nginx', 'conf'))
+        if not os.path.exists(os.path.join(settings.BASE_DIR, 'nginx', 'logs')):
+            os.makedirs(os.path.join(settings.BASE_DIR, 'nginx', 'logs'))
+        if not os.path.exists(os.path.join(settings.BASE_DIR, 'nginx', 'temp')):
+            os.makedirs(os.path.join(settings.BASE_DIR, 'nginx', 'temp'))
 
-        shutil.copyfile(os.path.join(self.PRODUCTIONSERVER_DIR, 'nginx', 'conf', 'nginx.conf.DJANGO_BASE'), os.path.join(settings.BASE_DIR, 'conf', 'nginx.conf'))
-        self.replace_text_in_file(os.path.join(settings.BASE_DIR, 'conf', 'nginx.conf'),
+        if os.path.isfile(os.path.join(settings.BASE_DIR, 'nginx', 'conf', 'nginx.conf')):
+            os.remove(os.path.join(settings.BASE_DIR, 'nginx', 'conf', 'nginx.conf'))
+
+        shutil.copyfile(os.path.join(self.PRODUCTIONSERVER_DIR, 'nginx', 'conf', 'nginx.conf.DJANGO_BASE'), os.path.join(settings.BASE_DIR, 'nginx', 'conf', 'nginx.conf'))
+        self.replace_text_in_file(os.path.join(settings.BASE_DIR, 'nginx', 'conf', 'nginx.conf'),
                                   [('%%APP_PORT%%', str(self.options['app_port'])),
                                    ('%%SERVER_PORT%%', str(self.options['port'])),
-                                   ('%%STATIC_FILE_DIR%%', os.path.dirname(settings.STATIC_ROOT)),
+                                   ('%%STATIC_FILE_DIR%%', settings.STATIC_ROOT),
                                    ('%%BASE_DIR%%', settings.BASE_DIR),
                                    ('%%PRODUCTIONSERVER_DIR%%', self.PRODUCTIONSERVER_DIR)])
 
         from time import sleep
         sleep(1)
 
-        subprocess.Popen([os.path.join(self.PRODUCTIONSERVER_DIR, 'nginx', 'nginx.exe'), ])
+        subprocess.Popen([os.path.join(self.PRODUCTIONSERVER_DIR, 'nginx', 'nginx.exe'), "-c" + os.path.join('nginx', 'conf', 'nginx.conf')])
 
         cherrypy.engine.start()
         cherrypy.engine.block()
