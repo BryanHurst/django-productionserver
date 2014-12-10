@@ -1,1 +1,0 @@
-2014/12/08 14:10:06 [error] 160572#160596: *1 CreateFile() "D:\bryan\Downloads\nginx-1.6.2/html/favicon.ico" failed (2: The system cannot find the file specified), client: 127.0.0.1, server: localhost, request: "GET /favicon.ico HTTP/1.1", host: "localhost"

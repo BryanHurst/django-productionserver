@@ -1,6 +1,7 @@
 import sys
 import os
 import shutil
+import subprocess
 
 from django.core.management.base import BaseCommand
 from django.core.servers.basehttp import get_internal_wsgi_application
@@ -77,12 +78,18 @@ class Command(BaseCommand):
         if os.path.isfile(os.path.join(settings.BASE_DIR, 'nginx.conf')):
             os.remove(os.path.join(settings.BASE_DIR, 'nginx.conf'))
 
-        shutil.copyfile(os.path.join(self.PRODUCTIONSERVER_DIR, 'nginx', 'conf', 'nginx.conf.DJANGO_BASE'), os.path.join(settings.BASE_DIR, 'nginx.conf'))
-        self.replace_text_in_file(os.path.join(settings.BASE_DIR, 'nginx.conf'),
+        shutil.copyfile(os.path.join(self.PRODUCTIONSERVER_DIR, 'nginx', 'conf', 'nginx.conf.DJANGO_BASE'), os.path.join(settings.BASE_DIR, 'conf', 'nginx.conf'))
+        self.replace_text_in_file(os.path.join(settings.BASE_DIR, 'conf', 'nginx.conf'),
                                   [('%%APP_PORT%%', str(self.options['app_port'])),
                                    ('%%SERVER_PORT%%', str(self.options['port'])),
-                                   ('%%STATIC_FILE_DIR%%', settings.STATIC_ROOT),
-                                   ('%%BASE_DIR%%', settings.BASE_DIR)])
+                                   ('%%STATIC_FILE_DIR%%', os.path.dirname(settings.STATIC_ROOT)),
+                                   ('%%BASE_DIR%%', settings.BASE_DIR),
+                                   ('%%PRODUCTIONSERVER_DIR%%', self.PRODUCTIONSERVER_DIR)])
+
+        from time import sleep
+        sleep(1)
+
+        subprocess.Popen([os.path.join(self.PRODUCTIONSERVER_DIR, 'nginx', 'nginx.exe'), ])
 
         cherrypy.engine.start()
         cherrypy.engine.block()
