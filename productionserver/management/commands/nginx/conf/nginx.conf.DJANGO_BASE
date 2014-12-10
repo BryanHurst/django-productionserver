@@ -1,0 +1,57 @@
+worker_processes  1;
+
+
+pid        logs/nginx.pid;
+
+events {
+    worker_connections  1024;
+}
+
+
+http {
+    sendfile on;
+
+    include       mime.types;
+    default_type  application/octet-stream;
+    keepalive_timeout  65;
+
+    gzip  on;
+    gzip_http_version 1.0;
+    gzip_proxied any;
+    gzip_min_length 500;
+    gzip_disable "MSIE [1-6]\.";
+    gzip_types text/plain text/xml text/css text/comma-separated-values text/javascript application/x-javascript application/atom+xml;
+
+    # Configuration containing list of application servers
+    upstream app_servers{
+        server 127.0.0.1:%%APP_PORT%%
+    }
+
+    server {
+        listen       %%SERVER_PORT%%;
+        server_name  localhost;
+
+        location ^~ /static/ {
+            root %%STATIC_FILE_DIR%%;
+        }
+
+        location = /favico.ico {
+            root %%BASE_DIR%%/favico.ico;
+        }
+
+        location = /robots.txt {
+            root %%BASE_DIR%%/robots.txt;
+        }
+
+        location / {
+            proxy_pass http://app_servers;
+            proxy_redirect off;
+            proxy_set_header HOST $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Host $server_name;
+        }
+
+    }
+
+}
