@@ -36,6 +36,12 @@ class Command(BaseCommand):
                     dest='port',
                     default=8080,
                     help='Port to listen on. Default is 8080. Note, port 80 requires root access'),
+        make_option('--app_port',
+                    action='store',
+                    type='int',
+                    dest='app_port',
+                    default=8081,
+                    help='Port for the CherryPy App Server (what hosts the Django App) to listen on. Default is 8181. Note, this must be different from the normal Server Port.')
     )
 
     def handle(self, *args, **options):
@@ -53,7 +59,7 @@ class Command(BaseCommand):
 
         # Configure the server
         server.socket_host = self.options['host']
-        server.socket_port = self.options['port'] + 1
+        server.socket_port = self.options['app_port']
         server.thread_pool = 30
 
         # For SSL Support
@@ -72,9 +78,11 @@ class Command(BaseCommand):
             os.remove(os.path.join(settings.BASE_DIR, 'nginx.conf'))
 
         shutil.copyfile(os.path.join(self.PRODUCTIONSERVER_DIR, 'nginx', 'conf', 'nginx.conf.DJANGO_BASE'), os.path.join(settings.BASE_DIR, 'nginx.conf'))
-        self.replace_text_in_file(os.path.join(settings.BASE_DIR, 'nginx.conf'), [('%%APP_PORT%%', str(self.options['port'] + 1)), ('%%SERVER_PORT%%', str(self.options['port'])), ('%%STATIC_FILE_DIR%%', settings.STATIC_ROOT), ('%%BASE_DIR%%', settings.BASE_DIR)])
-
-
+        self.replace_text_in_file(os.path.join(settings.BASE_DIR, 'nginx.conf'),
+                                  [('%%APP_PORT%%', str(self.options['app_port'])),
+                                   ('%%SERVER_PORT%%', str(self.options['port'])),
+                                   ('%%STATIC_FILE_DIR%%', settings.STATIC_ROOT),
+                                   ('%%BASE_DIR%%', settings.BASE_DIR)])
 
         cherrypy.engine.start()
         cherrypy.engine.block()
