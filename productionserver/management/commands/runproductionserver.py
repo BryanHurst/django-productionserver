@@ -29,8 +29,8 @@ class Command(BaseCommand):
                     action='store',
                     type='string',
                     dest='host',
-                    default='0.0.0.0',
-                    help='Adapter to listen on. Default is 0.0.0.0'),
+                    default='127.0.0.1',
+                    help='Adapter to listen on. Default is 127.0.0.1'),
         make_option('--port',
                     action='store',
                     type='int',
@@ -91,10 +91,8 @@ class Command(BaseCommand):
                                    ('%%SERVER_PORT%%', str(self.options['port'])),
                                    ('%%STATIC_FILE_DIR%%', settings.STATIC_ROOT),
                                    ('%%BASE_DIR%%', settings.BASE_DIR),
-                                   ('%%PRODUCTIONSERVER_DIR%%', self.PRODUCTIONSERVER_DIR)])
-
-        from time import sleep
-        sleep(1)
+                                   ('%%PRODUCTIONSERVER_DIR%%', self.PRODUCTIONSERVER_DIR),
+                                   ('%%HOST%%', self.options['host'])])
 
         subprocess.Popen([os.path.join(self.PRODUCTIONSERVER_DIR, 'nginx', 'nginx.exe'), "-c" + os.path.join('nginx', 'conf', 'nginx.conf')])
 

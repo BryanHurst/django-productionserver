@@ -38,7 +38,7 @@ http {
     }
 
     server {
-        listen 127.0.0.1:%%SERVER_PORT%%;
+        listen %%HOST%%:%%SERVER_PORT%%;
 
         client_body_temp_path %%BASE_DIR%%/nginx/temp/client_temp 1 2;
         proxy_temp_path %%BASE_DIR%%/nginx/temp/proxy_temp 1 2;
