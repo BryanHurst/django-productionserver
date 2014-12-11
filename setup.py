@@ -3,8 +3,7 @@ from distutils.core import setup
 setup(
     name='django-productionserver',
     version='1.0.0',
-    packages=['productionserver', 'productionserver.management', 'productionserver.management.commands',
-              'productionserver.management.commands.utils'],
+    packages=['productionserver', 'productionserver.management', 'productionserver.management.commands'],
     url='https://github.com/BryanHurst/django-productionserver',
     license='',
     author='Bryan Hurst',
