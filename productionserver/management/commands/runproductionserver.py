@@ -1,5 +1,6 @@
 import sys
 import os
+import signal
 import shutil
 import subprocess
 
@@ -8,6 +9,7 @@ from django.core.servers.basehttp import get_internal_wsgi_application
 from django.conf import settings
 from optparse import make_option
 from tempfile import mkstemp
+from time import sleep
 
 import cherrypy
 
@@ -94,10 +96,22 @@ class Command(BaseCommand):
                                    ('%%PRODUCTIONSERVER_DIR%%', self.PRODUCTIONSERVER_DIR),
                                    ('%%HOST%%', self.options['host'])])
 
-        subprocess.Popen([os.path.join(self.PRODUCTIONSERVER_DIR, 'nginx', 'nginx.exe'), "-c" + os.path.join('nginx', 'conf', 'nginx.conf')])
+        nginx = subprocess.Popen([os.path.join(self.PRODUCTIONSERVER_DIR, 'nginx', 'nginx.exe'), "-c" + os.path.join('nginx', 'conf', 'nginx.conf')])
 
         cherrypy.engine.start()
-        cherrypy.engine.block()
+        cherrypy.engine.block()  # I would like to use this as it listens to other CherryPy bad states. However, it causes the application to not catch the system close call correctly
+
+        try:
+            while(True):
+                sleep(.1)
+        except (KeyboardInterrupt, IOError, SystemExit) as e:
+            try:
+                print("Attempting to shutdown the server...")
+                cherrypy.engine.exit()  # Need to call this first since we aren't blocking above
+                nginx.kill()
+                print("Server shutdown.")
+            except:
+                print("Failed to shutdown server! Please press 'Ctrl+c.'")
 
     @staticmethod
     def replace_text_in_file(file_path, replacements=None):
