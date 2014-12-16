@@ -15,11 +15,16 @@ import cherrypy
 
 
 class Command(BaseCommand):
-    help = r"""Run the Django project using CherryPy as the server.
+    help = r"""Run the Django project using CherryPy as the App Server and NGINX as the Static Server.
     Taking place of the 'manage.py runserver', which is for development purposes only, this is suitable for small to medium server deployments.
 
     CherryPy (http://www.cherrypy.org) is required.
-    Futures (https://pypi.python.org/pypi/futures) is required.
+    Futures (https://pypi.python.org/pypi/futures) is required (for CherryPy).
+    NGINX is included.
+
+    Examples:
+        Run a server on external port 80 with Django running on internal port 25566
+            $ manage.py runproductionserver --host=0.0.0.0 --port=80 --app_port=25566
     """
     args = "[--option=value, use `runproductionserver help` for help]"
 
@@ -38,7 +43,7 @@ class Command(BaseCommand):
                     type='int',
                     dest='port',
                     default=8080,
-                    help='Port to listen on. Default is 8080. Note, port 80 requires root access'),
+                    help='External Port to listen on (what you navigate to). Default is 8080. Note, port 80 requires root access'),
         make_option('--app_port',
                     action='store',
                     type='int',
