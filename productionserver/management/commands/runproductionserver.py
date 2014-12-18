@@ -101,9 +101,7 @@ class Command(BaseCommand):
                                    ('%%PRODUCTIONSERVER_DIR%%', self.PRODUCTIONSERVER_DIR),
                                    ('%%HOST%%', self.options['host'])])
 
-        # Hide the output for now until we dive further into verbosity of nginx
-        FNULL = open(os.devnull, 'w')
-        nginx = subprocess.Popen([os.path.join(self.PRODUCTIONSERVER_DIR, 'nginx', 'nginx.exe'), "-c" + os.path.join('nginx', 'conf', 'nginx.conf')], stdout=FNULL, stderr=subprocess.STDOUT)
+        nginx = subprocess.Popen([os.path.join(self.PRODUCTIONSERVER_DIR, 'nginx', 'nginx.exe'), "-c" + os.path.join('nginx', 'conf', 'nginx.conf')])
 
         cherrypy.engine.start()
         cherrypy.engine.block()  # I would like to use this as it listens to other CherryPy bad states. However, it causes the application to not catch the system close call correctly
