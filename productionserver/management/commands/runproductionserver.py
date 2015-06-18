@@ -29,7 +29,10 @@ class Command(BaseCommand):
     args = "[--option=value, use `runproductionserver help` for help]"
 
     options = None
-    PRODUCTIONSERVER_DIR = os.path.dirname(os.path.abspath(__file__))
+    if getattr(sys, 'frozen', False):
+        PRODUCTIONSERVER_DIR = os.path.join(settings.BASE_DIR, 'nginx')
+    else:
+        PRODUCTIONSERVER_DIR = os.path.dirname(os.path.abspath(__file__))
 
     option_list = BaseCommand.option_list + (
         make_option('--host',
