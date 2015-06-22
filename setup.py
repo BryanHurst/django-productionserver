@@ -1,11 +1,8 @@
 import os
 
 from setuptools import setup, find_packages
+from productionserver import __include_files__
 
-
-include_files = [
-    (os.path.join(os.path.dirname(__file__), 'management', 'commands', 'nginx'), 'nginx'),
-]
 
 setup(
     name='django-productionserver',
