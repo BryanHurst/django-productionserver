@@ -28,7 +28,7 @@ class Command(BaseCommand):
 
     options = None
     if getattr(sys, 'frozen', False):
-        PRODUCTIONSERVER_DIR = os.path.join(settings.BASE_DIR, 'nginx')
+        PRODUCTIONSERVER_DIR = os.path.join(settings.BASE_DIR)
     else:
         PRODUCTIONSERVER_DIR = os.path.dirname(os.path.abspath(__file__))
 
