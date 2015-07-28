@@ -6,7 +6,7 @@ from productionserver import __include_files__
 
 setup(
     name='django-productionserver',
-    version='1.0.1',
+    version='1.0.2',
     packages=find_packages(),
     include_package_data=True,
     url='https://github.com/BryanHurst/django-productionserver',

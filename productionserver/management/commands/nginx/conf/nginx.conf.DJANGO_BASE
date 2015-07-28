@@ -3,8 +3,8 @@ master_process off;
 worker_processes 1;
 
 
-pid "%%BASE_DIR%%/nginx/logs/nginx.pid";
-error_log "%%BASE_DIR%%/nginx/logs/error.log" info;
+pid "%%WORKSPACE_PATH%%/nginx/logs/nginx.pid";
+error_log "%%WORKSPACE_PATH%%/nginx/logs/error.log" info;
 
 
 events {
@@ -19,8 +19,8 @@ http {
     include "%%PRODUCTIONSERVER_DIR%%/nginx/conf/win-utf";
     include "%%PRODUCTIONSERVER_DIR%%/nginx/conf/uwsgi_params";
 
-    error_log "%%BASE_DIR%%/nginx/logs/error.log" info;
-    access_log "%%BASE_DIR%%/nginx/logs/access.log";
+    error_log "%%WORKSPACE_PATH%%/nginx/logs/error.log" info;
+    access_log "%%WORKSPACE_PATH%%/nginx/logs/access.log";
 
     default_type application/octet-stream;
     keepalive_timeout 1800;
@@ -46,11 +46,11 @@ http {
     server {
         listen %%HOST%%:%%SERVER_PORT%%;
 
-        client_body_temp_path "%%BASE_DIR%%/nginx/temp/client_temp" 1 2;
-        proxy_temp_path "%%BASE_DIR%%/nginx/temp/proxy_temp" 1 2;
-        fastcgi_temp_path "%%BASE_DIR%%/nginx/temp/fastcgi_temp" 1 2;
-        uwsgi_temp_path "%%BASE_DIR%%/nginx/temp/uwsgi_temp" 1 2;
-        scgi_temp_path "%%BASE_DIR%%/nginx/temp/scgi_temp" 1 2;
+        client_body_temp_path "%%WORKSPACE_PATH%%/nginx/temp/client_temp" 1 2;
+        proxy_temp_path "%%WORKSPACE_PATH%%/nginx/temp/proxy_temp" 1 2;
+        fastcgi_temp_path "%%WORKSPACE_PATH%%/nginx/temp/fastcgi_temp" 1 2;
+        uwsgi_temp_path "%%WORKSPACE_PATH%%/nginx/temp/uwsgi_temp" 1 2;
+        scgi_temp_path "%%WORKSPACE_PATH%%/nginx/temp/scgi_temp" 1 2;
 
         location ^~ /static/ {
             alias "%%STATIC_FILE_DIR%%/";

@@ -97,12 +97,17 @@ class Command(BaseCommand):
         if os.path.isfile(os.path.join(settings.BASE_DIR, 'nginx', 'conf', 'nginx.conf')):
             os.remove(os.path.join(settings.BASE_DIR, 'nginx', 'conf', 'nginx.conf'))
 
-        shutil.copyfile(os.path.join(self.PRODUCTIONSERVER_DIR, 'nginx', 'conf', 'nginx.conf.DJANGO_BASE'), os.path.join(settings.BASE_DIR, 'nginx', 'conf', 'nginx.conf'))
-        self.replace_text_in_file(os.path.join(settings.BASE_DIR, 'nginx', 'conf', 'nginx.conf'),
+        if hasattr(settings, 'WORKSPACE_PATH') and settings.WORKSPACE_PATH:
+            WORKSPACE_PATH = settings.WORKSPACE_DIR
+        else:
+            WORKSPACE_PATH = settings.BASE_DIR
+        shutil.copyfile(os.path.join(self.PRODUCTIONSERVER_DIR, 'nginx', 'conf', 'nginx.conf.DJANGO_BASE'), os.path.join(WORKSPACE_PATH, 'nginx', 'conf', 'nginx.conf'))
+        self.replace_text_in_file(os.path.join(WORKSPACE_PATH, 'nginx', 'conf', 'nginx.conf'),
                                   [('%%APP_PORT%%', str(self.options['app_port'])),
                                    ('%%SERVER_PORT%%', str(self.options['port'])),
                                    ('%%STATIC_FILE_DIR%%', settings.STATIC_ROOT),
                                    ('%%BASE_DIR%%', settings.BASE_DIR),
+                                   ('%%WORKSPACE_PATH%%', WORKSPACE_PATH),
                                    ('%%PRODUCTIONSERVER_DIR%%', self.PRODUCTIONSERVER_DIR),
                                    ('%%HOST%%', self.options['host'])])
 
