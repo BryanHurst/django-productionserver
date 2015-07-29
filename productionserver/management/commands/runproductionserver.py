@@ -84,23 +84,24 @@ class Command(BaseCommand):
         # Subscribe the new server
         server.subscribe()
 
-        # Get the DJANGO_BASE nginx conf file and copy it to the running project's base dir as nginx.conf.
-        # Startup nginx with a passed in conf file of the one in the project's base dir.
-        # nginx -c settings.BASE_DIR/nginx.conf
-        if not os.path.exists(os.path.join(settings.BASE_DIR, 'nginx', 'conf')):
-            os.makedirs(os.path.join(settings.BASE_DIR, 'nginx', 'conf'))
-        if not os.path.exists(os.path.join(settings.BASE_DIR, 'nginx', 'logs')):
-            os.makedirs(os.path.join(settings.BASE_DIR, 'nginx', 'logs'))
-        if not os.path.exists(os.path.join(settings.BASE_DIR, 'nginx', 'temp')):
-            os.makedirs(os.path.join(settings.BASE_DIR, 'nginx', 'temp'))
-
-        if os.path.isfile(os.path.join(settings.BASE_DIR, 'nginx', 'conf', 'nginx.conf')):
-            os.remove(os.path.join(settings.BASE_DIR, 'nginx', 'conf', 'nginx.conf'))
-
         if hasattr(settings, 'WORKSPACE_PATH') and settings.WORKSPACE_PATH:
             WORKSPACE_PATH = settings.WORKSPACE_PATH
         else:
             WORKSPACE_PATH = settings.BASE_DIR
+
+        # Get the DJANGO_BASE nginx conf file and copy it to the running project's base dir as nginx.conf.
+        # Startup nginx with a passed in conf file of the one in the project's base dir.
+        # nginx -c settings.BASE_DIR/nginx.conf
+        if not os.path.exists(os.path.join(WORKSPACE_PATH, 'nginx', 'conf')):
+            os.makedirs(os.path.join(WORKSPACE_PATH, 'nginx', 'conf'))
+        if not os.path.exists(os.path.join(WORKSPACE_PATH, 'nginx', 'logs')):
+            os.makedirs(os.path.join(WORKSPACE_PATH, 'nginx', 'logs'))
+        if not os.path.exists(os.path.join(WORKSPACE_PATH, 'nginx', 'temp')):
+            os.makedirs(os.path.join(WORKSPACE_PATH, 'nginx', 'temp'))
+
+        if os.path.isfile(os.path.join(WORKSPACE_PATH, 'nginx', 'conf', 'nginx.conf')):
+            os.remove(os.path.join(WORKSPACE_PATH, 'nginx', 'conf', 'nginx.conf'))
+
         shutil.copyfile(os.path.join(self.PRODUCTIONSERVER_DIR, 'nginx', 'conf', 'nginx.conf.DJANGO_BASE'), os.path.join(WORKSPACE_PATH, 'nginx', 'conf', 'nginx.conf'))
         self.replace_text_in_file(os.path.join(WORKSPACE_PATH, 'nginx', 'conf', 'nginx.conf'),
                                   [('%%APP_PORT%%', str(self.options['app_port'])),
