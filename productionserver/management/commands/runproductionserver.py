@@ -98,7 +98,7 @@ class Command(BaseCommand):
             os.remove(os.path.join(settings.BASE_DIR, 'nginx', 'conf', 'nginx.conf'))
 
         if hasattr(settings, 'WORKSPACE_PATH') and settings.WORKSPACE_PATH:
-            WORKSPACE_PATH = settings.WORKSPACE_DIR
+            WORKSPACE_PATH = settings.WORKSPACE_PATH
         else:
             WORKSPACE_PATH = settings.BASE_DIR
         shutil.copyfile(os.path.join(self.PRODUCTIONSERVER_DIR, 'nginx', 'conf', 'nginx.conf.DJANGO_BASE'), os.path.join(WORKSPACE_PATH, 'nginx', 'conf', 'nginx.conf'))
