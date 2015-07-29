@@ -88,6 +88,7 @@ class Command(BaseCommand):
             WORKSPACE_PATH = settings.WORKSPACE_PATH
         else:
             WORKSPACE_PATH = settings.BASE_DIR
+        WORKSPACE_PATH = os.path.join(WORKSPACE_PATH, 'settings')
 
         # Get the DJANGO_BASE nginx conf file and copy it to the running project's base dir as nginx.conf.
         # Startup nginx with a passed in conf file of the one in the project's base dir.
@@ -112,7 +113,7 @@ class Command(BaseCommand):
                                    ('%%PRODUCTIONSERVER_DIR%%', self.PRODUCTIONSERVER_DIR),
                                    ('%%HOST%%', self.options['host'])])
 
-        nginx = subprocess.Popen([os.path.join(self.PRODUCTIONSERVER_DIR, 'nginx', 'nginx.exe'), "-c" + os.path.join('nginx', 'conf', 'nginx.conf')])
+        nginx = subprocess.Popen([os.path.join(self.PRODUCTIONSERVER_DIR, 'nginx', 'nginx.exe'), "-c" + os.path.join(WORKSPACE_PATH, 'nginx', 'conf', 'nginx.conf')])
 
         cherrypy.engine.start()
         #cherrypy.engine.block()  # I would like to use this as it listens to other CherryPy bad states. However, it causes the application to not catch the system close call correctly
