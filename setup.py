@@ -1,12 +1,12 @@
 import os
 
 from setuptools import setup, find_packages
-from productionserver import __include_files__
+from productionserver import __include_files__, __version__
 
 
 setup(
     name='django-productionserver',
-    version='1.0.2',
+    version=__version__,
     packages=find_packages(),
     include_package_data=True,
     url='https://github.com/BryanHurst/django-productionserver',
