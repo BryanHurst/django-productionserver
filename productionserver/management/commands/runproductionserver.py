@@ -70,10 +70,6 @@ class Command(BaseCommand):
             WORKSPACE_PATH = settings.BASE_DIR
         WORKSPACE_PATH = os.path.join(WORKSPACE_PATH, 'settings')
 
-        if self.options['silent']:
-            sys.stdout = open(os.devnull, 'w')
-            sys.sterr = open(os.devnull, 'w')
-
         # Get this Django Project's WSGI Application and mount it
         application = get_internal_wsgi_application()
         cherrypy.tree.graft(application, "/")
