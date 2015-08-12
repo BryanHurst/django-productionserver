@@ -71,26 +71,8 @@ class Command(BaseCommand):
         WORKSPACE_PATH = os.path.join(WORKSPACE_PATH, 'settings')
 
         if self.options['silent']:
-            if not os.path.exists(os.path.join(settings.WORKSPACE_PATH, 'logs')):
-                os.makedirs(os.path.join(settings.WORKSPACE_PATH, 'logs'))
-
-            output_log = os.path.join(settings.WORKSPACE_PATH, 'logs', 'server_output.log')
-            error_log = os.path.join(settings.WORKSPACE_PATH, 'logs', 'server_error.log')
-
-            if os.path.isfile(output_log) and os.stat(output_log).st_size > 10000000:
-                os.remove(output_log)
-            if os.path.isfile(error_log) and os.stat(error_log).st_size > 10000000:
-                os.remove(error_log)
-
-            with open(output_log, 'a') as log:
-                log.write("STARTING AT: %s" % now())
-                log.close()
-            with open(error_log, 'a') as log:
-                log.write("STARTING AT: %s" % now())
-                log.close()
-
-            sys.stdout = open(output_log, 'a')
-            sys.sterr = open(error_log, 'a')
+            sys.stdout = open(os.devnull, 'w')
+            sys.sterr = open(os.devnull, 'w')
 
         # Get this Django Project's WSGI Application and mount it
         application = get_internal_wsgi_application()
@@ -145,6 +127,29 @@ class Command(BaseCommand):
         if self.options['silent']:
             launch_args['stdout'] = subprocess.DEVNULL
             launch_args['stderr'] = subprocess.DEVNULL
+
+            if not os.path.exists(os.path.join(WORKSPACE_PATH, 'logs')):
+                os.makedirs(os.path.join(WORKSPACE_PATH, 'logs'))
+
+            output_log = os.path.join(WORKSPACE_PATH, 'logs', 'server_output.log')
+            error_log = os.path.join(WORKSPACE_PATH, 'logs', 'server_error.log')
+
+            if os.path.isfile(output_log) and os.stat(output_log).st_size > 10000000:
+                os.remove(output_log)
+            if os.path.isfile(error_log) and os.stat(error_log).st_size > 10000000:
+                os.remove(error_log)
+
+            with open(output_log, 'a') as log:
+                log.write("STARTING AT: %s" % now())
+                log.close()
+            with open(error_log, 'a') as log:
+                log.write("STARTING AT: %s" % now())
+                log.close()
+
+            cherrypy.log.screen = None
+            cherrypy.log.access_file = output_log
+            cherrypy.log.error_log = error_log
+
         nginx = subprocess.Popen([os.path.join(self.PRODUCTIONSERVER_DIR, 'nginx', 'nginx.exe'), "-c", os.path.join(WORKSPACE_PATH, 'nginx', 'conf', 'nginx.conf'), "-p",  os.path.join(WORKSPACE_PATH, 'nginx')], **launch_args)
 
         cherrypy.engine.start()
