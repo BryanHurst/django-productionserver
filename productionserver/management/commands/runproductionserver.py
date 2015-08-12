@@ -7,6 +7,7 @@ import subprocess
 from django.core.management.base import BaseCommand
 from django.core.servers.basehttp import get_internal_wsgi_application
 from django.conf import settings
+from django.utils.timezone import now
 from optparse import make_option
 from tempfile import mkstemp
 from time import sleep
@@ -62,6 +63,28 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         self.options = options
+
+        if self.options['silent']:
+            if not os.path.exists(os.path.join(settings.WORKSPACE_PATH, 'settings', 'logs')):
+                os.makedirs(os.path.join(settings.WORKSPACE_PATH, 'settings', 'logs'))
+
+            output_log = os.path.join(settings.WORKSPACE_PATH, 'settings', 'logs', 'server_output.log')
+            error_log = os.path.join(settings.WORKSPACE_PATH, 'settings', 'logs', 'server_error.log')
+
+            if os.path.isfile(output_log) and os.stat(output_log).st_size > 10000000:
+                os.remove(output_log)
+            if os.path.isfile(error_log) and os.stat(error_log).st_size > 10000000:
+                os.remove(error_log)
+
+            with open(output_log, 'a') as log:
+                log.write("STARTING AT: %s" % now())
+                log.close()
+            with open(error_log, 'a') as log:
+                log.write("STARTING AT: %s" % now())
+                log.close()
+
+            sys.stdout = open(output_log, 'a')
+            sys.sterr = open(error_log, 'a')
 
         # Get this Django Project's WSGI Application and mount it
         application = get_internal_wsgi_application()
