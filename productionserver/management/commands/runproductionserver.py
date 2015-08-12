@@ -146,9 +146,9 @@ class Command(BaseCommand):
                 log.write("STARTING AT: %s" % now())
                 log.close()
 
-            cherrypy.log.screen = None
+            cherrypy.log.screen = False
             cherrypy.log.access_file = output_log
-            cherrypy.log.error_log = error_log
+            cherrypy.log.error_file = error_log
 
         nginx = subprocess.Popen([os.path.join(self.PRODUCTIONSERVER_DIR, 'nginx', 'nginx.exe'), "-c", os.path.join(WORKSPACE_PATH, 'nginx', 'conf', 'nginx.conf'), "-p",  os.path.join(WORKSPACE_PATH, 'nginx')], **launch_args)
 
