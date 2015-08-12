@@ -120,8 +120,8 @@ class Command(BaseCommand):
 
         launch_args = {}
         if self.options['silent']:
-            launch_args['stdout'] = os.devnull
-            launch_args['stderr'] = os.devnull
+            launch_args['stdout'] = subprocess.DEVNULL
+            launch_args['stderr'] = subprocess.DEVNULL
         nginx = subprocess.Popen([os.path.join(self.PRODUCTIONSERVER_DIR, 'nginx', 'nginx.exe'), "-c", os.path.join(WORKSPACE_PATH, 'nginx', 'conf', 'nginx.conf'), "-p",  os.path.join(WORKSPACE_PATH, 'nginx')], **launch_args)
 
         cherrypy.engine.start()
