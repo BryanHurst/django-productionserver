@@ -144,7 +144,7 @@ class Command(BaseCommand):
             new_line = line
             for replacement in replacements:
                 new_line = new_line.replace(replacement[0], replacement[1])
-            new_file.write(new_line)
+            new_file.write(new_line.replace('\\', '/'))
 
         new_file.close()
         os.close(fh)
