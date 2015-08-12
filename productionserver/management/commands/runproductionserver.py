@@ -52,7 +52,12 @@ class Command(BaseCommand):
                     type='int',
                     dest='app_port',
                     default=8081,
-                    help='Port for the CherryPy App Server (what hosts the Django App) to listen on. Default is 8181. Note, this must be different from the normal Server Port.')
+                    help='Port for the CherryPy App Server (what hosts the Django App) to listen on. Default is 8181. Note, this must be different from the normal Server Port.'),
+        make_option('--silent',
+                    action='store_true',
+                    dest='silent',
+                    default=False,
+                    help='Hide all console output.')
     )
 
     def handle(self, *args, **options):
@@ -113,7 +118,11 @@ class Command(BaseCommand):
                                    ('%%PRODUCTIONSERVER_DIR%%', self.PRODUCTIONSERVER_DIR),
                                    ('%%HOST%%', self.options['host'])])
 
-        nginx = subprocess.Popen([os.path.join(self.PRODUCTIONSERVER_DIR, 'nginx', 'nginx.exe'), "-c", os.path.join(WORKSPACE_PATH, 'nginx', 'conf', 'nginx.conf'), "-p",  os.path.join(WORKSPACE_PATH, 'nginx')])
+        launch_args = {}
+        if self.options['silent']:
+            launch_args['stdout'] = os.devnull
+            launch_args['stderr'] = os.devnull
+        nginx = subprocess.Popen([os.path.join(self.PRODUCTIONSERVER_DIR, 'nginx', 'nginx.exe'), "-c", os.path.join(WORKSPACE_PATH, 'nginx', 'conf', 'nginx.conf'), "-p",  os.path.join(WORKSPACE_PATH, 'nginx')], **launch_args)
 
         cherrypy.engine.start()
         #cherrypy.engine.block()  # I would like to use this as it listens to other CherryPy bad states. However, it causes the application to not catch the system close call correctly
