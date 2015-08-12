@@ -64,12 +64,18 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.options = options
 
-        if self.options['silent']:
-            if not os.path.exists(os.path.join(settings.WORKSPACE_PATH, 'settings', 'logs')):
-                os.makedirs(os.path.join(settings.WORKSPACE_PATH, 'settings', 'logs'))
+        if hasattr(settings, 'WORKSPACE_PATH') and settings.WORKSPACE_PATH:
+            WORKSPACE_PATH = settings.WORKSPACE_PATH
+        else:
+            WORKSPACE_PATH = settings.BASE_DIR
+        WORKSPACE_PATH = os.path.join(WORKSPACE_PATH, 'settings')
 
-            output_log = os.path.join(settings.WORKSPACE_PATH, 'settings', 'logs', 'server_output.log')
-            error_log = os.path.join(settings.WORKSPACE_PATH, 'settings', 'logs', 'server_error.log')
+        if self.options['silent']:
+            if not os.path.exists(os.path.join(settings.WORKSPACE_PATH, 'logs')):
+                os.makedirs(os.path.join(settings.WORKSPACE_PATH, 'logs'))
+
+            output_log = os.path.join(settings.WORKSPACE_PATH, 'logs', 'server_output.log')
+            error_log = os.path.join(settings.WORKSPACE_PATH, 'logs', 'server_error.log')
 
             if os.path.isfile(output_log) and os.stat(output_log).st_size > 10000000:
                 os.remove(output_log)
@@ -111,12 +117,6 @@ class Command(BaseCommand):
 
         # Subscribe the new server
         server.subscribe()
-
-        if hasattr(settings, 'WORKSPACE_PATH') and settings.WORKSPACE_PATH:
-            WORKSPACE_PATH = settings.WORKSPACE_PATH
-        else:
-            WORKSPACE_PATH = settings.BASE_DIR
-        WORKSPACE_PATH = os.path.join(WORKSPACE_PATH, 'settings')
 
         # Get the DJANGO_BASE nginx conf file and copy it to the running project's base dir as nginx.conf.
         # Startup nginx with a passed in conf file of the one in the project's base dir.
