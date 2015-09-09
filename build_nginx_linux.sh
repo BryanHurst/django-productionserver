@@ -1,9 +1,6 @@
 #!/bin/bash
 # Download the nginx source you want to compile, put this script into that folder and run it.
 
-mkdir logs
-mkdir tmp
-
 sudo apt-get update
 sudo apt-get install build-essential gcc g++ openssl libssl-dev libperl-dev
 
