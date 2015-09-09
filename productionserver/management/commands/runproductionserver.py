@@ -35,6 +35,13 @@ class Command(BaseCommand):
     else:
         PRODUCTIONSERVER_DIR = os.path.dirname(os.path.abspath(__file__))
 
+    if sys.platform == 'win32':
+        OS_DIR = 'windows'
+        EXTENSION = '.exe'
+    else:
+        OS_DIR = 'linux'
+        EXTENSION = ''
+
     option_list = BaseCommand.option_list + (
         make_option('--host',
                     action='store',
@@ -109,7 +116,7 @@ class Command(BaseCommand):
         if os.path.isfile(os.path.join(WORKSPACE_PATH, 'nginx', 'conf', 'nginx.conf')):
             os.remove(os.path.join(WORKSPACE_PATH, 'nginx', 'conf', 'nginx.conf'))
 
-        shutil.copyfile(os.path.join(self.PRODUCTIONSERVER_DIR, 'nginx', 'conf', 'nginx.conf.DJANGO_BASE'), os.path.join(WORKSPACE_PATH, 'nginx', 'conf', 'nginx.conf'))
+        shutil.copyfile(os.path.join(self.PRODUCTIONSERVER_DIR, 'nginx', self.OS_DIR, 'conf', 'nginx.conf.DJANGO_BASE'), os.path.join(WORKSPACE_PATH, 'nginx', 'conf', 'nginx.conf'))
         self.replace_text_in_file(os.path.join(WORKSPACE_PATH, 'nginx', 'conf', 'nginx.conf'),
                                   [('%%APP_PORT%%', str(self.options['app_port'])),
                                    ('%%SERVER_PORT%%', str(self.options['port'])),
@@ -117,6 +124,7 @@ class Command(BaseCommand):
                                    ('%%BASE_DIR%%', settings.BASE_DIR),
                                    ('%%WORKSPACE_PATH%%', WORKSPACE_PATH),
                                    ('%%PRODUCTIONSERVER_DIR%%', self.PRODUCTIONSERVER_DIR),
+                                   ('%%OS_DIR%%', self.OS_DIR),
                                    ('%%HOST%%', self.options['host'])])
 
         launch_args = {}
@@ -146,7 +154,7 @@ class Command(BaseCommand):
             cherrypy.log.access_file = output_log
             cherrypy.log.error_file = error_log
 
-        nginx = subprocess.Popen([os.path.join(self.PRODUCTIONSERVER_DIR, 'nginx', 'nginx.exe'), "-c", os.path.join(WORKSPACE_PATH, 'nginx', 'conf', 'nginx.conf'), "-p",  os.path.join(WORKSPACE_PATH, 'nginx')], **launch_args)
+        nginx = subprocess.Popen([os.path.join(self.PRODUCTIONSERVER_DIR, 'nginx', self.OS_DIR, 'nginx' + self.EXTENSION), "-c", os.path.join(WORKSPACE_PATH, 'nginx', 'conf', 'nginx.conf'), "-p",  os.path.join(WORKSPACE_PATH, 'nginx')], **launch_args)
 
         cherrypy.engine.start()
         #cherrypy.engine.block()  # I would like to use this as it listens to other CherryPy bad states. However, it causes the application to not catch the system close call correctly
