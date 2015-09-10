@@ -42,6 +42,7 @@ class Command(BaseCommand):
         OS_DIR = 'linux'
         EXTENSION = ''
 
+    # TODO: Port selections aren't properly working in linux. Only the default ever gets used.
     option_list = BaseCommand.option_list + (
         make_option('--host',
                     action='store',

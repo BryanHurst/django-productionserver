@@ -32,6 +32,7 @@ class Command(BaseCommand):
     else:
         PRODUCTIONSERVER_DIR = os.path.dirname(os.path.abspath(__file__))
 
+    # TODO: Port selections aren't properly working in linux. Only the default ever gets used.
     option_list = BaseCommand.option_list + (
         make_option('--host',
                     action='store',
@@ -43,7 +44,7 @@ class Command(BaseCommand):
                     action='store',
                     type='int',
                     dest='app_port',
-                    default=8081,
+                    default=8001,
                     help='Port for the CherryPy App Server (what hosts the Django App) to listen on. Default is 8181. Note, this must be different from the normal Server Port.')
     )
 
