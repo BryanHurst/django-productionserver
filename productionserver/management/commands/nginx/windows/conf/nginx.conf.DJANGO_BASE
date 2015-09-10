@@ -15,9 +15,9 @@ events {
 http {
     sendfile on;
 
-    include "%%PRODUCTIONSERVER_DIR%%/%%OS_DIR%%/nginx/conf/mime.types";
-    include "%%PRODUCTIONSERVER_DIR%%/%%OS_DIR%%/nginx/conf/win-utf";
-    include "%%PRODUCTIONSERVER_DIR%%/%%OS_DIR%%/nginx/conf/uwsgi_params";
+    include "%%PRODUCTIONSERVER_DIR%%/nginx/%%OS_DIR%%/conf/mime.types";
+    include "%%PRODUCTIONSERVER_DIR%%/nginx/%%OS_DIR%%/conf/win-utf";
+    include "%%PRODUCTIONSERVER_DIR%%/nginx/%%OS_DIR%%/conf/uwsgi_params";
 
     error_log "%%WORKSPACE_PATH%%/nginx/logs/error.log" info;
     access_log "%%WORKSPACE_PATH%%/nginx/logs/access.log";
